@@ -28,13 +28,24 @@ set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-T ${CMAKE_SOURCE_DIR}/linker.ld")
 
-configure_file("${CMAKE_SOURCE_DIR}/disk/disk.img" "${CMAKE_CURRENT_BINARY_DIR}/disk.img" COPYONLY)
+#configure_file("${CMAKE_SOURCE_DIR}/disk/disk.img" "${CMAKE_CURRENT_BINARY_DIR}/disk.img" COPYONLY)
+add_custom_command(OUTPUT disk.img
+  COMMAND gunzip "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.gz" -c > ${CMAKE_CURRENT_BINARY_DIR}/disk.img
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Unpacking disk..."
+)
+
+add_custom_target(image
+  DEPENDS disk.img
+)
+add_library(OBJS OBJECT disk.img)
 
 add_custom_command(OUTPUT dsk
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/disk/setup.sh
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  DEPENDS disk.img
   COMMENT "Copying kernel to disk..."
-  )
+)
   
 
 add_custom_target(qemu
@@ -49,6 +60,7 @@ add_custom_target(
   DEPENDS dsk
 )
 
+add_dependencies(disk image)
 add_dependencies(disk kernel.elf)  
 
 
