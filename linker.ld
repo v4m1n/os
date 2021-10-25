@@ -13,6 +13,9 @@ SECTIONS
 
     .bss : AT(ADDR(.bss)-0xFFFFFFFF80000000)
     {
+        bss_start = .;
         *(.bss)
+        bss_end = .;
+
     }
 }

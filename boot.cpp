@@ -48,6 +48,7 @@ static_assert(sizeof(GDTE) == 8);
 #define USER_DS 0x2b
 
 extern void *LS_Virt[];
+extern void *bss_end[];
 const uint64_t VIRTUAL_OFFSET = (uint64_t)LS_Virt;
 
 GDTE gdt[6] = {{},
@@ -71,5 +72,6 @@ extern "C"
   new (&pm::instance) pm::PageManager;
 
   mboot::parse(mbootheader);
+  dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
   while(1);
 }
