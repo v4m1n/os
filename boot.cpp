@@ -3,6 +3,7 @@
 #include "multiboot.h"
 #include "new.h"
 #include "PageManager.h"
+#include "string.h"
 
 [[maybe_unused]] const struct
 {
@@ -14,10 +15,12 @@
     unsigned int end_tag2 = 8;
 } multiboot __attribute__ ((section (".multiboot")));
 
-[[gnu::aligned(4096)]] uint64_t pml4[512];
-[[gnu::aligned(4096)]] uint64_t pdpt[512];
-[[gnu::aligned(4096)]] uint64_t pd[512];
 
+[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pml4[512];
+[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pdpt[512];
+[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pd[512];
+
+[[gnu::section(".data")]]
 uint64_t boot_stack[512];
 
 
@@ -48,7 +51,8 @@ static_assert(sizeof(GDTE) == 8);
 #define USER_DS 0x2b
 
 extern void *LS_Virt[];
-extern void *bss_end[];
+extern uint8_t *bss_end[];
+extern uint8_t *bss_start[];
 const uint64_t VIRTUAL_OFFSET = (uint64_t)LS_Virt;
 
 GDTE gdt[6] = {{},
@@ -68,10 +72,13 @@ extern "C"
   mbootheader += VIRTUAL_OFFSET;
   dbg::printf("booting...\n");
   dbg::printf("multiboot2 header at {}\n", (uint64_t *)mbootheader);
-
+  dbg::printf("clearing bss...\n");
+  memset(bss_start, 0, bss_end-bss_start);
+  
+  dbg::printf("parsing multiboot...\n");
+  mboot::parse(mbootheader);
   new (&pm::instance) pm::PageManager;
 
-  mboot::parse(mbootheader);
   dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
   while(1);
 }
