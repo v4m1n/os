@@ -28,6 +28,10 @@ set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-T ${CMAKE_SOURCE_DIR}/linker.ld")
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/include/CMakeLists.include)
+
+#include_directories(${PROJECT_SOURCE_DIR}/include)
+
 #configure_file("${CMAKE_SOURCE_DIR}/disk/disk.img" "${CMAKE_CURRENT_BINARY_DIR}/disk.img" COPYONLY)
 add_custom_command(OUTPUT disk.img
   COMMAND gunzip "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.gz" -c > ${CMAKE_CURRENT_BINARY_DIR}/disk.img
