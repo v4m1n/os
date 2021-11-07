@@ -4,6 +4,7 @@ LS_Phys = 0x100000;
 SECTIONS 
 {
     . = 0xFFFFFFFF80000000+0x100000;
+    kernel_start = .;
 
     .text : AT(ADDR(.text)-0xFFFFFFFF80000000)
     {
@@ -18,4 +19,5 @@ SECTIONS
         bss_end = .;
 
     }
+    kernel_end = .;
 }

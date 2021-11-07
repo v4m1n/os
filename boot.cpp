@@ -16,12 +16,12 @@
 } multiboot __attribute__ ((section (".multiboot")));
 
 
-[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pml4[512];
-[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pdpt[512];
-[[gnu::section(".data"), gnu::aligned(4096)]] uint64_t pd[512];
+[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pml4[512];
+[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pdpt[512];
+[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pd[512];
 
-[[gnu::section(".data")]]
-uint64_t boot_stack[512];
+[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]]
+uint8_t boot_stack[PAGE_SIZE*2];
 
 
 struct GDTE {
@@ -53,7 +53,11 @@ static_assert(sizeof(GDTE) == 8);
 extern void *LS_Virt[];
 extern uint8_t *bss_end[];
 extern uint8_t *bss_start[];
-const uint64_t VIRTUAL_OFFSET = (uint64_t)LS_Virt;
+extern uint8_t *kernel_start[];
+extern uint8_t *kernel_end[];
+size_t VIRTUAL_OFFSET = (size_t)LS_Virt;
+size_t KERNEL_START = (size_t)kernel_start;
+size_t KERNEL_END = (size_t)kernel_end;
 
 GDTE gdt[6] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
@@ -71,9 +75,10 @@ extern "C"
 [[noreturn]] void boot(uint64_t mbootheader) {
   mbootheader += VIRTUAL_OFFSET;
   dbg::printf("booting...\n");
-  dbg::printf("multiboot2 header at {}\n", (uint64_t *)mbootheader);
   dbg::printf("clearing bss...\n");
   memset(bss_start, 0, bss_end-bss_start);
+
+  dbg::printf("multiboot2 header at {}\n", (uint64_t *)mbootheader);
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);

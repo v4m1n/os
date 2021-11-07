@@ -2,11 +2,13 @@
 #include "debug.h"
 #include "string.h"
 #include "stdint.h"
+#include "PageManager.h"
 
 namespace mboot {
 
 size_t memory_info_size;
 multiboot_mmap_entry memory_info[16];
+
 
 
 
@@ -43,8 +45,12 @@ void parse(uint64_t header) {
           dbg::panic_assert(num <= 16, "too many memory regions\n");
           memory_info_size = num;
           memcpy(memory_info, m->entries, sizeof(multiboot_mmap_entry)*num);
+          size_t k = 0;
           for (size_t j = 0; j < num; ++j) {
             auto &e = m->entries[j];
+            if (e.type == MULTIBOOT_MEMORY_AVAILABLE) {
+              pm::mem_regions[k++] = {e.addr, e.len};
+            }
             dbg::printf("  memory type {}: {} - {}\n", e.type, e.addr, e.addr+e.len);
           }
         }

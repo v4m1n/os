@@ -1,5 +1,6 @@
 #pragma once
 
+
 using int8_t   = char;
 using int16_t  = short;
 using int32_t  = int;
@@ -28,3 +29,5 @@ static_assert(sizeof(uint32_t) == 4);
 static_assert(sizeof(uint64_t) == 8);
 static_assert(sizeof(size_t) == 8);
 static_assert(sizeof(uintptr_t) == 8);
+
+constexpr size_t PAGE_SIZE = 4096ULL;
