@@ -4,6 +4,7 @@
 #include "new.h"
 #include "PageManager.h"
 #include "string.h"
+#include "VMM.h"
 
 [[maybe_unused]] const struct
 {
@@ -15,10 +16,6 @@
     unsigned int end_tag2 = 8;
 } multiboot __attribute__ ((section (".multiboot")));
 
-
-[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pml4[512];
-[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pdpt[512];
-[[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pd[512];
 
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]]
 uint8_t boot_stack[PAGE_SIZE*2];
@@ -73,6 +70,7 @@ GDTE gdt[6] = {{},
 
 extern "C"
 [[noreturn]] void boot(uint64_t mbootheader) {
+  pml4[0] = 0;
   mbootheader += VIRTUAL_OFFSET;
   dbg::printf("booting...\n");
   dbg::printf("clearing bss...\n");
@@ -82,6 +80,7 @@ extern "C"
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
+  vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-VIRTUAL_OFFSET;
   new (&pm::instance) pm::PageManager;
 
   dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
