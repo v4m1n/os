@@ -1,0 +1,68 @@
+#pragma once
+#include "stdint.h"
+#include "pmm.h"
+
+
+extern uint64_t pml4[512];
+extern uint64_t pdpt[512];
+extern uint64_t pd[512];
+
+namespace vmm {
+
+
+class AddressSpace {
+  public:
+    constexpr static size_t PRESENT = (1ULL<<0);
+    constexpr static size_t WRITEABLE = (1ULL<<1);
+    constexpr static size_t USER_ACCESS = (1ULL<<2);
+    constexpr static size_t WRITE_THROUGH = (1ULL<<3);
+    constexpr static size_t CACHE_DISABLED = (1ULL<<4);
+    constexpr static size_t ACCESSED = (1ULL<<5);
+    constexpr static size_t DIRTY = (1ULL<<6);
+    constexpr static size_t HUGE_PAGE = (1ULL<<7);
+    constexpr static size_t GLOBAL = (1ULL<<8);
+    constexpr static size_t EXECUTION_DISABLED = (1ULL<<63);
+    constexpr static uint64_t IDENTITY_MAPPING = 0xffff'8000'0000'0000ULL;
+
+    static void initIdentityMapping();
+
+    static bool mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable=1, const uint64_t nx=0);
+
+    static void setKernelCaching(const size_t vpn, const uint64_t cache);
+
+    static inline size_t setPFN(const uint64_t entry, const size_t pfn) {
+      return (entry&~0xffffffffff000ULL)|(pfn<<12);
+    }
+    static inline size_t getPFN(const uint64_t entry) {
+      return (entry&0xffffffffff000ULL)>>12;
+    }
+
+    static uint64_t kernel_page_table_;
+    AddressSpace() = delete;
+
+    AddressSpace(AddressSpace &) = delete;
+    AddressSpace(AddressSpace &&) = delete;
+    AddressSpace &operator=(AddressSpace &) = delete;
+    AddressSpace &operator=(AddressSpace &&) = delete;
+  private:
+
+    struct Offsets {
+      const size_t pti;
+      const size_t pdi;
+      const size_t pdpti;
+      const size_t pml4i;
+
+      Offsets() = delete;
+      constexpr Offsets(size_t vpn) : pti(vpn & 0x1ff), 
+                                      pdi((vpn >> 9) & 0x1ff), 
+                                      pdpti((vpn >> 18) & 0x1ff), 
+                                      pml4i((vpn >> 27) & 0x1ff) {}
+    };
+
+};
+template<typename T>
+inline T pageAddress(size_t pfn) {
+  return reinterpret_cast<T>(AddressSpace::IDENTITY_MAPPING | pfn*PAGE_SIZE);
+}
+
+};

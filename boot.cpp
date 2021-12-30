@@ -2,9 +2,14 @@
 #include "debug.h"
 #include "multiboot.h"
 #include "new.h"
-#include "PageManager.h"
+#include "pmm.h"
 #include "string.h"
-#include "VMM.h"
+#include "vmm.h"
+#include "gdt.h"
+#include "kmm.h"
+#include "interrupts.h"
+#include "registers.h"
+#include "Thread.h"
 
 [[maybe_unused]] const struct
 {
@@ -21,32 +26,6 @@
 uint8_t boot_stack[PAGE_SIZE*2];
 
 
-struct GDTE {
-  uint16_t limit1;
-  uint16_t base1;
-  uint8_t base2;
-  uint8_t accessed : 1;
-  uint8_t rw : 1;
-  uint8_t direction : 1;
-  uint8_t executable : 1;
-  uint8_t descriptor : 1;
-  uint8_t priv : 2;
-  uint8_t present : 1;
-  uint8_t limit2 : 4;
-  uint8_t zero : 1;
-  uint8_t lmode : 1;
-  uint8_t size : 1;
-  uint8_t granularity : 1;
-  uint8_t base3;
-} __attribute__((packed));
-static_assert(sizeof(GDTE) == 8);
-
-#define KERNEL_CS 0x8
-#define KERNEL_DS 0x10
-#define TSS 0x18
-#define USER_CS 0x23
-#define USER_DS 0x2b
-
 extern void *LS_Virt[];
 extern uint8_t *bss_end[];
 extern uint8_t *bss_start[];
@@ -56,17 +35,28 @@ size_t VIRTUAL_OFFSET = (size_t)LS_Virt;
 size_t KERNEL_START = (size_t)kernel_start;
 size_t KERNEL_END = (size_t)kernel_end;
 
+TSS tss;
+
+void loadTSS() {
+  tss.iopb_offset = sizeof(TSS);
+  asm volatile("ltr ax"::"a"(0x30):"memory");
+}
+
 GDTE gdt[6] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0, .base4=0, .reserved=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=0,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
-               {.limit1=0x68U, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=0, .priv=0,
-                .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0},
+               {.limit1=sizeof(TSS), .base1=(uint16_t)(uint64_t)&tss, .base2=(uint8_t)((uint64_t)&tss>>16), .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
+                .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=0, .base3=(uint8_t)((uint64_t)&tss>>24), .base4=(uint32_t)((uint64_t)&tss>>32), .reserved=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=3,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0, .base4=0, .reserved=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=3,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0}};
+                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0}};
+
+void testfunc(uint64_t arg) {
+  while(1) dbg::printf("{d}", arg);
+}
 
 extern "C"
 [[noreturn]] void boot(uint64_t mbootheader) {
@@ -76,13 +66,28 @@ extern "C"
   dbg::printf("clearing bss...\n");
   memset(bss_start, 0, bss_end-bss_start);
 
+  loadTSS();
+
   dbg::printf("multiboot2 header at {}\n", (uint64_t *)mbootheader);
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
   vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-VIRTUAL_OFFSET;
-  new (&pm::instance) pm::PageManager;
-
+  pmm::initPageManager();
+  
+  dbg::printf("boot stack: {}-{}\n",boot_stack, boot_stack+sizeof(boot_stack));
   dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
-  while(1);
+
+  irq::initIdt();
+  irq::initAPIC();
+
+  auto thread = (thrd::Thread *)kmm::kmalloc(sizeof(thrd::Thread));
+
+  const auto regs = thrd::setupKernelRegisters((uint64_t)testfunc, ((uint64_t)thread->stack_)+sizeof(thread->stack_), 1);
+  auto stack = thrd::setupTask(thread->stack_, sizeof(thread->stack_), regs);
+  uint64_t tmp;
+
+  context_switch(&stack, &tmp);
+
+  dbg::panic("end of boot funtion reached\n");
 }

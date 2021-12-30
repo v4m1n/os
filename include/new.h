@@ -1,5 +1,5 @@
 #pragma once
-#include "stdint.h"
+#include "stddef.h"
 
 void *operator new(size_t, void *p);
 void *operator new[](size_t, void *p);

@@ -2,7 +2,10 @@
 #include "debug.h"
 #include "string.h"
 #include "stdint.h"
-#include "PageManager.h"
+#include "pmm.h"
+
+
+size_t max_addr = 0;
 
 namespace mboot {
 
@@ -49,7 +52,8 @@ void parse(uint64_t header) {
           for (size_t j = 0; j < num; ++j) {
             auto &e = m->entries[j];
             if (e.type == MULTIBOOT_MEMORY_AVAILABLE) {
-              pm::mem_regions[k++] = {e.addr, e.len};
+              pmm::mem_regions[k++] = {e.addr, e.len};
+              max_addr = (e.addr+e.len-1) > max_addr ? (e.addr+e.len-1) : max_addr;
             }
             dbg::printf("  memory type {}: {} - {}\n", e.type, e.addr, e.addr+e.len);
           }
@@ -90,6 +94,8 @@ void parse(uint64_t header) {
     i += tag_size;
     i = (i + 7) & ~7ULL;
   }
+  dbg::panic_assert(max_addr, "no memory regions\n");
+
 
 }
 

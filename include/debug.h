@@ -1,7 +1,11 @@
 #pragma once
 #include "stdint.h"
+#include "stddef.h"
 
 namespace dbg {
+
+  void dump(void *data, size_t size);
+
   void printf(const char *str);
 
   void putchar(const char x);
@@ -99,10 +103,10 @@ namespace dbg {
   }
 
   template<typename ...U>
-  void panic(const char *str, const U... args) {
+  [[noreturn]] void panic(const char *str, const U... args) {
     printf("==========KERNEL PANIC==========\n");
     printf(str, args...);
-    while(1);
+    while(1) asm volatile("hlt":::"memory");
   }
 
   template<typename ...U>
