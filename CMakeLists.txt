@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 # set the project name and version
 project(OS)
@@ -6,6 +6,7 @@ project(OS)
 enable_language(C ASM)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP true)
 
 FILE(GLOB CPPSource *.cpp)
 FILE(GLOB SSource *.S)
@@ -28,9 +29,9 @@ set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-T ${CMAKE_SOURCE_DIR}/linker.ld")
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/include/CMakeLists.include)
+#include(${CMAKE_CURRENT_SOURCE_DIR}/include/CMakeLists.include)
 
-#include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 #configure_file("${CMAKE_SOURCE_DIR}/disk/disk.img" "${CMAKE_CURRENT_BINARY_DIR}/disk.img" COPYONLY)
 add_custom_command(OUTPUT disk.img
@@ -53,8 +54,8 @@ add_custom_command(OUTPUT dsk
   
 
 add_custom_target(qemu
-    COMMAND qemu-system-x86_64 -m 8G -no-reboot -debugcon stdio -drive format=raw,file=disk.img
-    COMMENT "launch qemu"
+    COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img
+    COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img`"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
