@@ -54,40 +54,40 @@ and eax, 0xffff000U
 mov cr3, eax
 push 0
 push edx
-push (4*8<<16)
+push ((4*16-1)<<16)
 lea eax, [esp+2]
 lgdt [eax]
 mov eax, cr0
 or eax, (1<<31)
 mov cr0, eax
 pushf
-push 0x8
+push 0x10
 push esi
 iret
 .code64
 tmp:
 and rsp, ~0xfULL
-push 0x10
+push 0x20
 push rsp
 pushf
-push 0x8
+push 0x10
 lea rax, [lmode]
 push rax
 iretq
 lmode:
-mov ax, 0x10
+mov ax, 0x20
 mov ss, ax
 mov ds, ax
 mov fs, ax
 mov gs, ax
 mov es, ax
 mov qword ptr [pml4], 0
-mov qword ptr [pdpt], 0
+//mov qword ptr [pdpt], 0
 lea rax, [gdt]
-mov word ptr [rsp], 0x30
+mov word ptr [rsp], 0x60-1
 mov [rsp+2], rax
 lgdt [rsp]
-lea rsp, [boot_stack]
+mov rax, 0x30
+lea rsp, [boot_stack+4096*2]
 jmp boot
 label: jmp label
-.intel_syntax
