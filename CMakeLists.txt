@@ -54,8 +54,8 @@ add_custom_command(OUTPUT dsk
   
 
 add_custom_target(qemu
-    COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img
-    COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img`"
+    COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img -enable-kvm -cpu host
+    COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img -enable-kvm -cpu host`"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 

@@ -9,6 +9,7 @@
 #include "kmm.h"
 #include "interrupts.h"
 #include "registers.h"
+#include "scheduler.h"
 #include "Thread.h"
 
 [[maybe_unused]] const struct
@@ -55,7 +56,9 @@ GDTE gdt[6] = {{},
                 .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0}};
 
 void testfunc(uint64_t arg) {
-  while(1) dbg::printf("{d}", arg);
+  while(1) {
+    dbg::printf("{d}", arg);
+  }
 }
 
 extern "C"
@@ -81,13 +84,16 @@ extern "C"
   irq::initIdt();
   irq::initAPIC();
 
-  auto thread = (thrd::Thread *)kmm::kmalloc(sizeof(thrd::Thread));
+  auto thread = (Thread *)kmm::kmalloc(sizeof(Thread));
+  auto thread2 = (Thread *)kmm::kmalloc(sizeof(Thread));
+  memset(thread, 0, sizeof(Thread));
+  memset(thread2, 0, sizeof(Thread));
 
-  const auto regs = thrd::setupKernelRegisters((uint64_t)testfunc, ((uint64_t)thread->stack_)+sizeof(thread->stack_), 1);
-  auto stack = thrd::setupTask(thread->stack_, sizeof(thread->stack_), regs);
-  uint64_t tmp;
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
 
-  context_switch(&stack, &tmp);
+  sched::launch();
 
   dbg::panic("end of boot funtion reached\n");
 }

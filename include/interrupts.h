@@ -7,6 +7,11 @@ extern "C" void context_switch(void *dest, void *src);
 namespace irq {
   void initIdt();
   void initAPIC();
+  inline bool getIF() {
+    uint64_t flags;
+    asm volatile("pushf\npop %0" :"=r"(flags):: "memory");
+    return flags &0x200;
+  }
   inline void enableInterrupts() { asm volatile("sti" ::: "memory"); }
   inline void disableInterrupts() { asm volatile("cli" ::: "memory"); }
 

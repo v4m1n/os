@@ -29,7 +29,7 @@ registers setupKernelRegisters(const uint64_t start, const uint64_t stack, const
 uint64_t setupTask(uint64_t *stack, const uint64_t size, const registers &regs) {
 
   uint8_t *st = reinterpret_cast<uint8_t *>(stack);
-  st += size - sizeof(registers);
+  st += (size - sizeof(registers));
   memcpy(st, &regs, sizeof(registers));
   stack = (uint64_t*)st;
   stack = push(stack, (uint64_t)context_return);

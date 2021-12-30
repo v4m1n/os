@@ -5,6 +5,7 @@
 #include "asm.h"
 #include "vmm.h"
 #include "interrupts.h"
+#include "scheduler.h"
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
@@ -78,8 +79,8 @@ void exception_handler_14() {
 
 extern "C"
 void irq_handler_48() {
-  dbg::printf("timer\n");
   apic->EOI = 0;
+  sched::schedule();
 }
 extern "C"
 void irq_handler_128() {
@@ -179,7 +180,7 @@ void initAPIC() {
   apic->lvt_error = 0xfeU;
   apic->divide_conf = 2;
   apic->lvt_timer = 0x30U | 1U<<17;
-  apic->initial_count = 0xfffffU;
+  apic->initial_count = 0xffffU;
 }
 
 }
