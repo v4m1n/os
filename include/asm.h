@@ -1,5 +1,6 @@
 #pragma once
 #include "stdint.h"
+#include "stddef.h"
 
 
 inline auto cpuid(uint64_t rax) {
@@ -31,11 +32,21 @@ inline void invlpg(uint64_t addr) {
   asm volatile("invlpg [%0]" :: "r"(addr) : "memory");
 }
 inline void outb(uint16_t port, uint8_t value) {
-  asm volatile("outb dx, al" :: "d"(port), "a"(value));
+  asm volatile("outb dx, al" :: "d"(port), "a"(value) : "memory");
 }
 inline void outw(uint16_t port, uint16_t value) {
-  asm volatile("outw dx, ax" :: "d"(port), "a"(value));
+  asm volatile("outw dx, ax" :: "d"(port), "a"(value) : "memory");
 }
 inline void out(uint16_t port, uint32_t value) {
-  asm volatile("out dx, eax" :: "d"(port), "a"(value));
+  asm volatile("out dx, eax" :: "d"(port), "a"(value) : "memory");
+}
+inline size_t xchg(volatile size_t &var, size_t value) {
+  asm volatile("xchg %1, rax" : "=a"(value) : "m"(var), "a"(value));
+  return value;
+}
+inline void cbarrier() {
+  asm volatile("" ::: "memory");
+}
+inline void barrier() {
+  asm volatile("mfence" ::: "memory");
 }

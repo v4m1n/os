@@ -11,6 +11,7 @@
 #include "registers.h"
 #include "scheduler.h"
 #include "Thread.h"
+#include "spinlock.h"
 
 [[maybe_unused]] const struct
 {
@@ -55,10 +56,19 @@ GDTE gdt[6] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=3,
                 .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0}};
 
-void testfunc(uint64_t arg) {
-  while(1) {
-    dbg::printf("{d}", arg);
+uint64_t x;
+spinlock lock;
+
+void testfunc(uint64_t) {
+  for(size_t i = 0; i < 10000000; ++i) {
+    lock.lock();
+    ++x;
+    lock.unlock();
   }
+  lock.lock();
+  dbg::printf("{d}\n", x);
+  lock.unlock();
+  while(1);
 }
 
 extern "C"
