@@ -11,7 +11,7 @@
 #include "registers.h"
 #include "scheduler.h"
 #include "Thread.h"
-#include "spinlock.h"
+#include "sync.h"
 
 [[maybe_unused]] const struct
 {

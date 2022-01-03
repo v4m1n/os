@@ -1,5 +1,5 @@
 #include "asm.h"
-#include "spinlock.h"
+#include "sync.h"
 #include "debug.h"
 #include "interrupts.h"
 

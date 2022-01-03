@@ -19,3 +19,5 @@ private:
   volatile size_t locked_ = 0;
   bool if_;
 };
+
+using mutex = spinlock;
