@@ -64,5 +64,9 @@ template<typename T>
 inline T pageAddress(size_t pfn) {
   return reinterpret_cast<T>(AddressSpace::IDENTITY_MAPPING | pfn*PAGE_SIZE);
 }
+template<typename T>
+inline T identAddress(size_t addr) {
+  return reinterpret_cast<T>(AddressSpace::IDENTITY_MAPPING | addr);
+}
 
 };

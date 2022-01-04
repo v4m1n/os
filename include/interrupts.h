@@ -7,6 +7,8 @@ extern "C" void context_switch(void *dest, void *src);
 namespace irq {
   void initIdt();
   void initAPIC();
+  void parseMPT();
+  void parseRSDT();
   inline bool getIF() {
     uint64_t flags;
     asm volatile("pushf\npop %0" :"=r"(flags):: "memory");

@@ -4,6 +4,10 @@
 #include "gdt.h"
 #include "asm.h"
 #include "vmm.h"
+#include "pmm.h"
+#include "mpt.h"
+#include "acpi.h"
+#include "string.h"
 #include "interrupts.h"
 #include "scheduler.h"
 
@@ -99,6 +103,8 @@ void irq_handler_def() {
   dbg::printf("unknown int\n");
 }
 
+extern size_t VIRTUAL_OFFSET;
+
 namespace irq {
 
 void initIdt() {
@@ -181,6 +187,153 @@ void initAPIC() {
   apic->divide_conf = 2;
   apic->lvt_timer = 0x30U | 1U<<17;
   apic->initial_count = 0xffffU;
+}
+
+void *searchMPT() {
+  uint32_t * const bios_start = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+639*1024U);
+  for (size_t i = 0; i < 1024ULL/4; ++i) {
+    if (bios_start[i] == 0x5f504d5fU) {
+      return &bios_start[i];
+    }
+  }
+  uint32_t * const bios_rom = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+0xE0000U);
+  for (size_t i = 0; i < (1ULL<<17)/4; ++i) {
+    if (bios_rom[i] == 0x5f504d5fU) {
+      return &bios_rom[i];
+    }
+  }
+  return nullptr;
+}
+
+void parseMPT() {
+
+  MP *mp = reinterpret_cast<MP *>(searchMPT());
+  dbg::panic_assert(mp->address, "mp config table does not exist\n");
+  MPHead *mp_head = reinterpret_cast<MPHead *>(mp->address+VIRTUAL_OFFSET);
+  dbg::panic_assert(mp_head->signature_ == 0x504d4350U, "MP config signature incorrect\n");
+  size_t cur = mp->address+sizeof(MPHead)+VIRTUAL_OFFSET;
+  dbg::printf("MP Table:\n");
+  for (size_t i = 0; i < mp_head->entry_cnt_; ++i) {
+    uint8_t type = *reinterpret_cast<uint8_t *>(cur);
+    switch (type) {
+      case 0:
+        {
+          auto ent = reinterpret_cast<MPProcEntry *>(cur);
+          dbg::printf("  CPU {}\n", ent->cpu_sign_);
+          cur += sizeof(MPProcEntry);
+        }
+        break;
+      case 1:
+        {
+          auto ent = reinterpret_cast<MPBusEntry *>(cur);
+          char tmp[7];
+          memcpy(tmp, ent->string_, 6);
+          tmp[6] = 0;
+          dbg::printf("  Bus {}\n", tmp);
+          cur += sizeof(MPBusEntry);
+        }
+        break;
+      case 2:
+        {
+          auto ent = reinterpret_cast<MPIOAPICEntry *>(cur);
+          dbg::printf("  I/O APIC {}\n", ent->id_);
+          cur += sizeof(MPIOAPICEntry);
+        }
+        break;
+      case 3:
+        {
+          auto ent = reinterpret_cast<MPIOIntEntry *>(cur);
+          dbg::printf("  I/O Int {}\n", ent->int_type_);
+          cur += sizeof(MPIOIntEntry);
+        }
+        break;
+      case 4:
+        {
+          auto ent = reinterpret_cast<MPLIntEntry *>(cur);
+          dbg::printf("  Local Int {}\n", ent->int_type_);
+          cur += sizeof(MPLIntEntry);
+        }
+        break;
+      default:
+        dbg::panic("unkown MP entry type\n");
+    }
+  }
+}
+
+RSDP *searchRSDP() {
+  uint64_t * const bios_rom = reinterpret_cast<uint64_t *>(VIRTUAL_OFFSET+0xE0000U);
+  for (size_t i = 0; i < (1ULL<<17)/8; ++i) {
+    if (bios_rom[i] == 0x2052545020445352ULL) {
+      return reinterpret_cast<RSDP *>(&bios_rom[i]);
+    }
+  }
+  return nullptr;
+}
+void parseRSDT() {
+  auto rsdp = searchRSDP();
+  dbg::panic_assert(rsdp, "RSDP not found\n");
+
+  MADT *apic = nullptr;
+
+  uint64_t phys_addr = rsdp->revision_ == 0 ? rsdp->rsdt_address_ : rsdp->xsdt_address_;
+  dbg::printf("RSDT: {}\n", phys_addr);
+
+  if (rsdp->revision_ == 0) {
+    auto rsdt = vmm::identAddress<RSDT *>(phys_addr);
+    dbg::printf("ACPI description headers:\n");
+    for (size_t i = 0; i < (rsdt->length_-sizeof(RSDT))/4; ++i) {
+      auto desc = vmm::identAddress<DescHeader *>(rsdt->entry_[i]);
+      char tmp[5];
+      memcpy(tmp, &desc->signature_, 4);
+      tmp[4] = 0;
+      dbg::printf("  {}\n", tmp);
+      if (desc->signature_ == *reinterpret_cast<const uint32_t *>("APIC"))
+        apic = reinterpret_cast<MADT *>(desc);
+    }
+  }
+  else {
+    auto xsdt = vmm::identAddress<XSDT *>(phys_addr);
+    dbg::printf("ACPI description headers:\n");
+    for (size_t i = 0; i < (xsdt->length_-sizeof(XSDT))/8; ++i) {
+      auto desc = vmm::identAddress<DescHeader *>(xsdt->entry_[i]);
+      char tmp[5];
+      memcpy(tmp, &desc->signature_, 4);
+      tmp[4] = 0;
+      dbg::printf("  {}\n", tmp);
+      if (desc->signature_ == *reinterpret_cast<const uint32_t *>("APIC"))
+        apic = reinterpret_cast<MADT *>(desc);
+    }
+  }
+  dbg::panic_assert(apic, "no apic descriptor found\n");
+  
+  dbg::printf("MADT:\n");
+  uint64_t apic_s = reinterpret_cast<uint64_t>(apic);
+  for (size_t i = sizeof(MADT); i < apic->length_;) {
+    auto curr = reinterpret_cast<MADTEntry *>(apic_s + i);
+    switch (curr->type_) {
+      case 0:
+        {
+          auto curr = reinterpret_cast<MADTLAPICEntry *>(apic_s + i);
+          dbg::printf("  LAPIC: {}\n", curr->apic_id_);
+
+        }
+        break;
+      default:
+        dbg::printf("  unkown type: {}\n", curr->type_);
+        break;
+    }
+    i += curr->length_;
+
+  }
+
+
+
+
+
+
+
+
+
 }
 
 }

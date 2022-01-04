@@ -85,6 +85,7 @@ extern "C"
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
+  irq::parseMPT();
   vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-VIRTUAL_OFFSET;
   pmm::initPageManager();
   
@@ -93,6 +94,7 @@ extern "C"
 
   irq::initIdt();
   irq::initAPIC();
+  irq::parseRSDT();
 
   auto thread = (Thread *)kmm::kmalloc(sizeof(Thread));
   auto thread2 = (Thread *)kmm::kmalloc(sizeof(Thread));
