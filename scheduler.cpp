@@ -8,6 +8,8 @@
 
 Thread *currentThread = nullptr;
 
+array<CPU> cpus(0);
+
 namespace sched {
 
 static Thread *list = nullptr;

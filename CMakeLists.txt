@@ -31,6 +31,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/lin
 
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include/containers)
 
 add_custom_command(OUTPUT disk.img
   COMMAND gunzip "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.gz" -c > ${CMAKE_CURRENT_BINARY_DIR}/disk.img

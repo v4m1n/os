@@ -10,6 +10,7 @@
 
 extern size_t max_addr;
 extern size_t VIRTUAL_OFFSET;
+extern size_t core_init_page;
 
 namespace vmm {
 uint64_t AddressSpace::kernel_page_table_;
@@ -97,6 +98,9 @@ void AddressSpace::initIdentityMapping() {
   constinit static bool called = false;
   dbg::panic_assert(!called, "initIdentityMapping has already been called\n");
   called = true;
+
+  core_init_page = pmm::allocPFN();
+  dbg::panic_assert(core_init_page*PAGE_SIZE < 64*1024ULL, "core init page above 1MB\n");
 
   dbg::printf("initializing identity mapping...\n");
   const size_t max = (max_addr + (PAGE_SIZE-1))/PAGE_SIZE;

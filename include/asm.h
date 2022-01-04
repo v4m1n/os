@@ -44,6 +44,14 @@ inline size_t xchg(volatile size_t &var, size_t value) {
   asm volatile("xchg %1, rax" : "=a"(value) : "m"(var), "a"(value));
   return value;
 }
+inline void atomic_inc(volatile size_t &var) {
+  asm volatile("lock inc %0" :: "m"(var));
+}
+inline size_t atomic_fetch(volatile uint64_t &var) {
+  size_t value;
+  asm volatile("mov rax, %1" : "=a"(value) : "m"(var));
+  return value;
+}
 inline void cbarrier() {
   asm volatile("" ::: "memory");
 }

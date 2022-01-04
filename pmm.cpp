@@ -59,6 +59,9 @@ void initPageManager() {
     }
     init_bitmap[j/8] |= (1U<<(j%8));
   }
+
+  dbg::panic_assert((init_bitmap[0] & 1) == 0, "core init page not free\n");
+
   vmm::AddressSpace::initIdentityMapping();
 
   size_t pm_start = end;

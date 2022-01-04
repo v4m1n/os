@@ -19,11 +19,11 @@ or eax, (1<<11)|(1<<8)
 wrmsr
 //this is horrible, but better than fucking around with the linker
 .code64 
-lea eax, dword [pml4-4]
-lea ebx, dword [pdpt-4]
-lea ecx, dword [pd-4]
-lea edx, dword [gdt-4]
-lea esi, dword [tmp-4]
+lea eax, [pml4]
+lea ebx, [pdpt]
+lea ecx, [pd]
+lea edx, [gdt]
+lea esi, [tmp]
 .code32
 and eax, 0xffff000U
 and ebx, 0xffff000U
@@ -81,7 +81,7 @@ mov ds, ax
 mov fs, ax
 mov gs, ax
 mov es, ax
-mov qword ptr [pml4], 0
+//mov qword ptr [pml4], 0
 //mov qword ptr [pdpt], 0
 lea rax, [gdt]
 mov word ptr [rsp], 0x60-1

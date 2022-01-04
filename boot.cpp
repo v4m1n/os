@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "Thread.h"
 #include "sync.h"
+#include "asm.h"
 
 [[maybe_unused]] const struct
 {
@@ -73,7 +74,6 @@ void testfunc(uint64_t) {
 
 extern "C"
 [[noreturn]] void boot(uint64_t mbootheader) {
-  pml4[0] = 0;
   mbootheader += VIRTUAL_OFFSET;
   dbg::printf("booting...\n");
   dbg::printf("clearing bss...\n");
@@ -95,6 +95,8 @@ extern "C"
   irq::initIdt();
   irq::initAPIC();
   irq::parseRSDT();
+  irq::launchCores();
+  pml4[0] = 0;
 
   auto thread = (Thread *)kmm::kmalloc(sizeof(Thread));
   auto thread2 = (Thread *)kmm::kmalloc(sizeof(Thread));

@@ -10,6 +10,7 @@
 #include "string.h"
 #include "interrupts.h"
 #include "scheduler.h"
+#include "array.h"
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
@@ -17,6 +18,10 @@
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
+
+extern uint8_t boot_stack[PAGE_SIZE*2];
+
+size_t core_init_page = -1;
 
 struct IntDes {
   IntDes(uint64_t offset, uint16_t segment, 
@@ -308,6 +313,9 @@ void parseRSDT() {
   
   dbg::printf("MADT:\n");
   uint64_t apic_s = reinterpret_cast<uint64_t>(apic);
+
+  uint8_t cpus_[32];
+  size_t num_cpus = 0;
   for (size_t i = sizeof(MADT); i < apic->length_;) {
     auto curr = reinterpret_cast<MADTEntry *>(apic_s + i);
     switch (curr->type_) {
@@ -315,7 +323,8 @@ void parseRSDT() {
         {
           auto curr = reinterpret_cast<MADTLAPICEntry *>(apic_s + i);
           dbg::printf("  LAPIC: {}\n", curr->apic_id_);
-
+          cpus_[curr->apic_id_/8] |= 1U<<(curr->apic_id_%8);
+          ++num_cpus;
         }
         break;
       default:
@@ -323,17 +332,118 @@ void parseRSDT() {
         break;
     }
     i += curr->length_;
-
   }
 
+  new (&cpus) array<CPU>(num_cpus);
 
+  for (size_t i = 0, j = 0; i < num_cpus; ++i, ++j) {
+    while (!(cpus_[j/8] & (1U<<(j%8)))) ++j;
+    cpus.at(i).id_ = j; 
+  }
+  cpus.at(0).stack_start_ = reinterpret_cast<size_t>(boot_stack)+sizeof(boot_stack);
+  for (size_t i = 1; i < num_cpus; ++i) {
+    cpus.at(i).stack_start_ = vmm::pageAddress<size_t>(pmm::allocPFN())+PAGE_SIZE;
+  }
+}
 
+uint64_t cores_up = 0;
+extern "C"
+void core_boot(uint64_t id) {
+  dbg::printf("hello from core {}\n", id);
+  atomic_inc(cores_up);
+  while(1);
+}
+extern "C" uint8_t core_start;
+extern "C" uint8_t core_start_end;
 
+asm (R"(
+.global core_start
+   core_start:
+      .code16
+   0:
+      cli
+      mov ax, 0
+      mov ss, ax
+      mov ds, ax
+      mov es, ax
+      mov gs, ax
+      mov fs, ax
+      ljmp 0:1f-0b
+   1: mov edi, 1
+      lock xadd [1024], di
+      lgdt [1024+16]
+      mov eax, cr0
+      or eax, 1
+      mov cr0, eax
+   1: mov eax, [1024+64]
+      mov cr3, eax
+      mov ecx, 0xC0000080
+      rdmsr
+      or eax, (1<<11)|(1<<8)
+      wrmsr
+      mov eax, cr4
+      or eax, (1<<5)|(1<<9)
+      mov cr4, eax
+      mov eax, cr0
+      or eax, (1<<31)
+      mov cr0, eax
+      ljmp 0x10:1f-0b
+   1: .code64
+      mov ax, 0x20
+      mov ss, ax
+      mov ds, ax
+      mov es, ax
+      mov gs, ax
+      mov fs, ax
+      lgdt [1024+32]
+      lidt [1024+48]
+      lea rax, [1024+80+8*rdi]
+      mov rsp, [rax]
+      lea rax, core_boot
+      jmp rax
+      
+.global core_start_end
+   core_start_end:
+      )");
+void launchCores() {
+  dbg::panic_assert(core_init_page == 0, "core_init_page not 0");
 
+  auto x = vmm::pageAddress<uint8_t *>(core_init_page);
+  auto count = reinterpret_cast<volatile uint64_t *>(x+1024);
+  memset(x, 0, PAGE_SIZE);
+  dbg::panic_assert(&core_start_end-&core_start < 1024, "boot up code too large\n");
+  memcpy(x, &core_start, &core_start_end-&core_start);
+  *count = 1;
 
+  struct ldt {
+    uint16_t size_;
+    uint64_t addr_;
+  } __attribute__((packed));
 
+  auto gdt32 = reinterpret_cast<ldt *>(x+1024+16);
+  gdt32->size_ = sizeof(gdt)-1;
+  gdt32->addr_ = reinterpret_cast<uint64_t>(gdt) - VIRTUAL_OFFSET;
+  auto gdt64 = reinterpret_cast<ldt *>(x+1024+32);
+  gdt64->size_ = sizeof(gdt)-1;
+  gdt64->addr_ = reinterpret_cast<uint64_t>(gdt);
+  auto idt = reinterpret_cast<ldt *>(x+1024+48);
+  idt->size_ = sizeof(idt)-1;
+  idt->addr_ = reinterpret_cast<uint64_t>(idt);
+  *reinterpret_cast<uint64_t *>(x+1024+64) = reinterpret_cast<uint64_t>(pml4) - VIRTUAL_OFFSET;
 
+  auto stack = reinterpret_cast<uint64_t *>(1024+80);
+  for (const auto &x : cpus) {
+    *stack = x.stack_start_;
+    ++stack;
+  }
+  cores_up = 1;
 
+  apic->interrupt_command[0].data = 0xc4500U;
+  
+  apic->interrupt_command[0].data = 0xc4600U | core_init_page;
+
+  while(atomic_fetch(cores_up) < cpus.size()) cbarrier();
+  dbg::printf("all cores up\n");
 }
 
 }

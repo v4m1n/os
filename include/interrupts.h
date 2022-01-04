@@ -9,6 +9,8 @@ namespace irq {
   void initAPIC();
   void parseMPT();
   void parseRSDT();
+  void launchCores();
+
   inline bool getIF() {
     uint64_t flags;
     asm volatile("pushf\npop %0" :"=r"(flags):: "memory");
