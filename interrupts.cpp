@@ -11,11 +11,11 @@
 #include "interrupts.h"
 #include "scheduler.h"
 #include "array.h"
+#include "msr.h"
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
 
-#define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
 
@@ -177,7 +177,7 @@ void initAPIC() {
   dbg::panic_assert((regs.rdx>>9)&1, "cpu has no local apic\n");
 
   auto base = rdmsr(IA32_APIC_BASE_MSR);
-  dbg::panic_assert((base>>8)&1, "booting cpu not the BSP\n");
+  //dbg::panic_assert((base>>8)&1, "booting cpu not the BSP\n");
   dbg::panic_assert((base>>11)&1, "local APIC disabled\n");
   dbg::printf("APIC base {}\n", base);
   auto pfn = base/PAGE_SIZE;
@@ -349,7 +349,30 @@ void parseRSDT() {
 uint64_t cores_up = 0;
 extern "C"
 void core_boot(uint64_t id) {
-  dbg::printf("hello from core {}\n", id);
+
+  auto &cpu = cpus.at(id);
+  cpu.id_ = apic->id;
+  memset(&cpu.arch_.tss, 0, sizeof(TSS));
+  cpu.arch_.tss.iopb_offset = sizeof(TSS);
+  cpu.arch_.gdt = (GDTE *)kmm::kmalloc(sizeof(gdt));
+
+  auto lgdt = cpu.arch_.gdt;
+  auto &tss = cpu.arch_.tss;
+  memcpy(lgdt, gdt, sizeof(gdt));
+  lgdt[3].setBase((uint64_t)&tss);
+
+  struct {
+    uint16_t size_;
+    uint64_t addr_;
+  } __attribute__((packed)) ldt {sizeof(gdt) - 1, reinterpret_cast<uint64_t>(lgdt)};
+
+  asm volatile("lgdt %0"::"m"(ldt):"memory");
+  asm volatile("ltr ax"::"a"(TSSS):"memory");
+  wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
+
+  initAPIC();
+
+  dbg::printf("{d}", id);
   atomic_inc(cores_up);
   while(1);
 }
@@ -408,6 +431,11 @@ asm (R"(
 void launchCores() {
   dbg::panic_assert(core_init_page == 0, "core_init_page not 0");
 
+  cpus.at(0).id_ = apic->id;
+  wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
+  auto &tss = cpus.at(0).arch_.tss;
+  gdt[3].setBase((uint64_t)&tss);
+
   auto x = vmm::pageAddress<uint8_t *>(core_init_page);
   auto count = reinterpret_cast<volatile uint64_t *>(x+1024);
   memset(x, 0, PAGE_SIZE);
@@ -426,9 +454,9 @@ void launchCores() {
   auto gdt64 = reinterpret_cast<ldt *>(x+1024+32);
   gdt64->size_ = sizeof(gdt)-1;
   gdt64->addr_ = reinterpret_cast<uint64_t>(gdt);
-  auto idt = reinterpret_cast<ldt *>(x+1024+48);
-  idt->size_ = sizeof(idt)-1;
-  idt->addr_ = reinterpret_cast<uint64_t>(idt);
+  auto idtp = reinterpret_cast<ldt *>(x+1024+48);
+  idtp->size_ = sizeof(idt)-1;
+  idtp->addr_ = reinterpret_cast<uint64_t>(idt);
   *reinterpret_cast<uint64_t *>(x+1024+64) = reinterpret_cast<uint64_t>(pml4) - VIRTUAL_OFFSET;
 
   auto stack = reinterpret_cast<uint64_t *>(1024+80);
@@ -438,12 +466,17 @@ void launchCores() {
   }
   cores_up = 1;
 
+  dbg::printf("booting cores: ");
+
   apic->interrupt_command[0].data = 0xc4500U;
   
   apic->interrupt_command[0].data = 0xc4600U | core_init_page;
 
   while(atomic_fetch(cores_up) < cpus.size()) cbarrier();
-  dbg::printf("all cores up\n");
+
+  asm volatile("ltr ax"::"a"(TSSS):"memory");
+
+  dbg::printf("\nall cores up\n");
 }
 
 }

@@ -5,14 +5,13 @@
 #include "string.h"
 #include "kmm.h"
 #include "registers.h"
+#include "asm.h"
 
 Thread *currentThread = nullptr;
 
 array<CPU> cpus(0);
 
 namespace sched {
-
-static Thread *list = nullptr;
 
 void schedule() {
   bool IF = irq::getIF();
@@ -27,8 +26,9 @@ void schedule() {
 }
 
 void addThread(Thread *thread) {
-  bool IF = irq::getIF();
-  irq::disableInterrupts();
+  auto cpu = getCPUStorage<CPU>(0);
+  lock_guard(cpu->list_lock_);
+  auto &list = cpu->list_;
 
   if (list == nullptr) {
     list = thread;
@@ -40,11 +40,12 @@ void addThread(Thread *thread) {
   thread->prev_ = list;
   list->next_->prev_ = thread;
   list->next_ = thread;
-  if (IF)
-    irq::enableInterrupts();
 }
 
 Thread *nextThread() {
+  auto cpu = getCPUStorage<CPU>(0);
+  lock_guard(cpu->list_lock_);
+  auto &list = cpu->list_;
   do {
     list = list->next_;
   } while (list->sleeping_);
@@ -52,6 +53,9 @@ Thread *nextThread() {
 }
 
 Thread *popThread() {
+  auto cpu = getCPUStorage<CPU>(0);
+  lock_guard(cpu->list_lock_);
+  auto &list = cpu->list_;
   auto thread = list;
   list = list->prev_;
   list->next_ = thread->next_;
@@ -61,7 +65,8 @@ Thread *popThread() {
 
 void launch() {
   uint64_t tmp;
-  currentThread = list;
+  currentThread = getCPUStorage<CPU>(0)->list_;
+  dbg::printf("crr {}\n", currentThread);
   context_switch(&currentThread->current_stack_, &tmp);
   dbg::panic("end of scheduler launch function reached\n");
 }

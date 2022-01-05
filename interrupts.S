@@ -1,6 +1,6 @@
 .intel_syntax noprefix
 
-#define KERNEL_DS 0x10
+#define KERNEL_DS 0x20
 
 .macro popall
   pop rax

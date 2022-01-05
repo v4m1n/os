@@ -20,6 +20,12 @@ struct GDTE {
   uint8_t base3;
   uint32_t base4;
   uint32_t reserved;
+  inline void setBase(uint64_t addr) {
+    base1 = (uint16_t)addr;
+    base2 = (uint8_t)(addr>>16);
+    base3 = (uint8_t)(addr>>24);
+    base4 = (uint32_t)(addr>>32);
+  }
 } __attribute__((packed));
 
 static_assert(sizeof(GDTE) == 16);

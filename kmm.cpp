@@ -5,6 +5,8 @@
 #include "pmm.h"
 #include "vmm.h"
 #include "string.h"
+#include "sync.h"
+#include "new.h"
 
 namespace kmm {
   struct MemCache;
@@ -15,6 +17,8 @@ namespace kmm {
     alignas(16) void *memory_[];
   };
   struct Slab {
+    Slab() = default;
+    mutex lock_;
     MemCache *cache_;
     Slab *next_;
     Slab *prev_;
@@ -23,6 +27,7 @@ namespace kmm {
     Object memory_[];
   };
   struct MemCache {
+    mutex lock_;
     size_t size_;
     size_t slab_size_;
     Slab *full_;
@@ -61,6 +66,7 @@ namespace kmm {
     size_t pages = pmm::allocPFN(slab_size);
     auto slab = vmm::pageAddress<Slab *>(pages);
     memset(slab, 0, sizeof(Slab));
+    new (slab) Slab;
     slab->free_ = slab->memory_;
     const auto end = reinterpret_cast<size_t>(slab) + slab_size - (sizeof(Object) + size);
     auto current = reinterpret_cast<size_t>(slab->memory_);
@@ -81,12 +87,14 @@ namespace kmm {
     return slab;
   }
   void *allocateSlabChunk(Slab * const slab) {
+    slab->lock_.lock();
     auto next = slab->free_;
     dbg::panic_assert(next, "trying to allocate on a full slab {}\n", slab);
     dbg::panic_assert(next->free_, "block on free list not free\n");
     next->free_ = 0;
     ++slab->num_alloc_;
     slab->free_ = static_cast<Object *>(next->memory_[0]);
+    slab->lock_.unlock();
     return next->memory_;
   }
   void freeSlabChunk(Object * const obj) {
@@ -103,7 +111,8 @@ namespace kmm {
     auto obj = reinterpret_cast<Object *>(reinterpret_cast<size_t>(ptr)-sizeof(Object));
     auto slab = obj->slab_;
     auto cache = slab->cache_;
-
+    cache->lock_.lock();
+    slab->lock_.lock();
     if (slab->num_alloc_ == 1) {
       auto &tmp = slab == cache->partial_ ? cache->partial_ : (slab == cache->full_ ? cache->full_ : slab);
       moveListElement(cache->free_, tmp);
@@ -112,25 +121,22 @@ namespace kmm {
       auto &tmp = slab->prev_ ? slab : cache->full_;
       moveListElement(cache->partial_, tmp);
     }
+    cache->lock_.unlock();
     freeSlabChunk(obj);
     dbg::panic_assert(obj->slab_->free_!=nullptr, "slab is full even though an element was freed\n");
+    slab->lock_.unlock();
   }
   
   void *kmalloc_slab(MemCache &cache) {
+    cache.lock_.lock();
     if (cache.partial_ == nullptr) {
       if (cache.free_) {
         moveListElement(cache.partial_, cache.free_);
       }
       else {
         auto slab = allocateSlab(cache.slab_size_, cache.size_);
-        if (slab == (void *)0xffff800000400000ULL) {
-          slab->cache_ = &cache;
-          dbg::dump(slab, 4096);
-        }
         slab->cache_ = &cache;
         moveListElement(cache.partial_, slab);
-        if (cache.partial_ == (void *)0xffff800000400000ULL)
-          dbg::dump(cache.partial_, 4096);
       }
     }
     dbg::panic_assert(cache.partial_, "partial slab list empty\n");
@@ -139,6 +145,7 @@ namespace kmm {
     if (cache.partial_->free_ == nullptr) {
       moveListElement(cache.full_, cache.partial_);
     } 
+    cache.lock_.unlock();
     return memory;
   }
 
@@ -155,27 +162,30 @@ namespace kmm {
     }
   }
 
-  static MemCache cache[] = {
-    {32,     PAGE_SIZE,     nullptr, nullptr, nullptr},
-    {64,     PAGE_SIZE,     nullptr, nullptr, nullptr},
-    {128,    PAGE_SIZE*2,   nullptr, nullptr, nullptr},
-    {256,    PAGE_SIZE*2,   nullptr, nullptr, nullptr},
-    {512,    PAGE_SIZE*4,   nullptr, nullptr, nullptr},
-    {1024,   PAGE_SIZE*4,   nullptr, nullptr, nullptr},
-    {2048,   PAGE_SIZE*16,  nullptr, nullptr, nullptr},
-    {4096,   PAGE_SIZE*16,  nullptr, nullptr, nullptr},
-    {8192,   PAGE_SIZE*32,  nullptr, nullptr, nullptr},
-    {16384,  PAGE_SIZE*64,  nullptr, nullptr, nullptr},
-    {32768,  PAGE_SIZE*128, nullptr, nullptr, nullptr},
-    {65536,  PAGE_SIZE*128, nullptr, nullptr, nullptr},
-    {131072, PAGE_SIZE*128, nullptr, nullptr, nullptr},
-    {0, 0, nullptr, nullptr, nullptr},
+  static constinit MemCache cache[] = {
+    {{}, 32,     PAGE_SIZE,     nullptr, nullptr, nullptr},
+    {{}, 64,     PAGE_SIZE,     nullptr, nullptr, nullptr},
+    {{}, 128,    PAGE_SIZE*2,   nullptr, nullptr, nullptr},
+    {{}, 256,    PAGE_SIZE*2,   nullptr, nullptr, nullptr},
+    {{}, 512,    PAGE_SIZE*4,   nullptr, nullptr, nullptr},
+    {{}, 1024,   PAGE_SIZE*4,   nullptr, nullptr, nullptr},
+    {{}, 2048,   PAGE_SIZE*16,  nullptr, nullptr, nullptr},
+    {{}, 4096,   PAGE_SIZE*16,  nullptr, nullptr, nullptr},
+    {{}, 8192,   PAGE_SIZE*32,  nullptr, nullptr, nullptr},
+    {{}, 16384,  PAGE_SIZE*64,  nullptr, nullptr, nullptr},
+    {{}, 32768,  PAGE_SIZE*128, nullptr, nullptr, nullptr},
+    {{}, 65536,  PAGE_SIZE*128, nullptr, nullptr, nullptr},
+    {{}, 131072, PAGE_SIZE*128, nullptr, nullptr, nullptr},
   };
+  void kmalloc_init() {
+    static size_t call = 0;
+    dbg::panic_assert(call++ == 0, "trying to init kmalloc twice\n");
+  }
   void *kmalloc(size_t size) {
     MemCache *found = nullptr;
-    for (size_t i = 0; cache[i].size_; ++i) {
-      if (cache[i].size_ > size) {
-        found = &cache[i];
+    for (auto &x : cache) {
+      if (x.size_ > size) {
+        found = &x;
         break;
       }
     }

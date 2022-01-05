@@ -44,6 +44,12 @@ inline size_t xchg(volatile size_t &var, size_t value) {
   asm volatile("xchg %1, rax" : "=a"(value) : "m"(var), "a"(value));
   return value;
 }
+template <typename T>
+inline T *getCPUStorage(const size_t offset) {
+  T *value;
+  asm volatile("mov %0, gs:[%1]" : "=r"(value) : "r"(offset));
+  return value;
+}
 inline void atomic_inc(volatile size_t &var) {
   asm volatile("lock inc %0" :: "m"(var));
 }

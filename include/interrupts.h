@@ -1,5 +1,5 @@
 #pragma once
-
+#include "gdt.h"
 
 extern "C" void context_return();
 extern "C" void context_switch(void *dest, void *src);
@@ -59,3 +59,7 @@ namespace irq {
   static_assert(sizeof(APIC) == 0x400);
 
 }
+struct ArchCPU {
+  TSS tss;
+  GDTE *gdt;
+};
