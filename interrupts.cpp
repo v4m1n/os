@@ -88,6 +88,7 @@ void exception_handler_14() {
 
 extern "C"
 void irq_handler_48() {
+  ++getCPUStorage<CPU>(0)->tick_;
   apic->EOI = 0;
   sched::schedule();
 }
@@ -346,6 +347,20 @@ void parseRSDT() {
   }
 }
 
+uint64_t x;
+spinlock lock;
+
+void testfunc(uint64_t) {
+  for(size_t i = 0; i < 10000000; ++i) {
+    lock.lock();
+    ++x;
+    lock.unlock();
+  }
+  lock.lock();
+  dbg::printf("{d}a\n", x);
+  lock.unlock();
+  while(1) hlt();
+}
 uint64_t cores_up = 0;
 extern "C"
 void core_boot(uint64_t id) {
@@ -374,7 +389,9 @@ void core_boot(uint64_t id) {
 
   dbg::printf("{d}", id);
   atomic_inc(cores_up);
-  while(1);
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
+  sched::launch();
+  dbg::panic("end of core {} reached\n", id);
 }
 extern "C" uint8_t core_start;
 extern "C" uint8_t core_start_end;

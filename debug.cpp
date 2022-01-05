@@ -1,10 +1,13 @@
 #include "stdint.h"
 #include "stddef.h"
 #include "debug.h"
+#include "sync.h"
 
 namespace dbg {
 
-  void printf(const char *str) {
+  constinit spinlock_irq lock;
+
+  void printfu(const char *str) {
     while(*str) {
       putchar(*str);
       ++str;

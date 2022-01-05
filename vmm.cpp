@@ -15,6 +15,79 @@ extern size_t core_init_page;
 namespace vmm {
 uint64_t AddressSpace::kernel_page_table_;
 
+AddressSpace::AddressSpace() {
+  pml4_ = pmm::allocZeroPFN()*PAGE_SIZE;
+  memcpy(identAddress<void *>(pml4_), pml4, PAGE_SIZE);
+}
+
+bool AddressSpace::mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx) {
+  const Offsets off{vpn};
+  size_t *pdpt;
+  size_t *pd;
+  size_t *pt;
+  auto pml4 = identAddress<uint64_t *>(pml4_);
+
+  if ((pml4[off.pml4i] & PRESENT) == 0) {
+    size_t pfn = pmm::allocZeroPFN();
+    pml4[off.pml4i] = setPFN(PRESENT|WRITEABLE, pfn);
+  }
+  pdpt = pageAddress<uint64_t *>(getPFN(pml4[off.pml4i]));
+
+  if ((pdpt[off.pdpti] & PRESENT) == 0) {
+    size_t pfn = pmm::allocZeroPFN();
+    pdpt[off.pdpti] = setPFN(PRESENT|WRITEABLE, pfn);
+  }
+  pd = pageAddress<uint64_t *>(getPFN(pdpt[off.pdpti]));
+
+  if ((pd[off.pdi] & PRESENT) == 0) {
+    size_t pfn = pmm::allocZeroPFN();
+    pd[off.pdi] = setPFN(PRESENT|WRITEABLE, pfn);
+  }
+  pt = pageAddress<uint64_t *>(getPFN(pd[off.pdi]));
+
+  if (pt[off.pti] & PRESENT) {
+    return false;
+  }
+  dbg::panic_assert(pt[off.pti] == 0, "mapping pfn to a non zero entry\n");
+  pt[off.pti] = setPFN(0, pfn);
+  pt[off.pti] |= writeable ? WRITEABLE : 0;
+  pt[off.pti] |= nx ? EXECUTION_DISABLED : 0;
+  pt[off.pti] |= USER_ACCESS;
+  pt[off.pti] |= PRESENT;
+  return true;
+}
+
+uint64_t AddressSpace::unmapPFN(const uint64_t vpn) {
+  const Offsets off{vpn};
+  size_t *pdpt;
+  size_t *pd;
+  size_t *pt;
+  auto pml4 = identAddress<uint64_t *>(pml4_);
+
+  if ((pml4[off.pml4i] & PRESENT) == 0) {
+    return -1;
+  }
+  pdpt = pageAddress<uint64_t *>(getPFN(pml4[off.pml4i]));
+
+  if ((pdpt[off.pdpti] & PRESENT) == 0) {
+    return -1;
+  }
+  pd = pageAddress<uint64_t *>(getPFN(pdpt[off.pdpti]));
+
+  if ((pd[off.pdi] & PRESENT) == 0) {
+    return -1;
+  }
+  pt = pageAddress<uint64_t *>(getPFN(pd[off.pdi]));
+
+  if (!(pt[off.pti] & PRESENT)) {
+    return -1;
+  }
+
+  auto pfn = getPFN(pt[off.pti]); 
+  pt[off.pti] = 0;
+  return pfn;
+}
+
 bool AddressSpace::mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx) {
   const Offsets off{vpn};
   size_t *pdpt;
@@ -43,7 +116,6 @@ bool AddressSpace::mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const ui
 
   if (pt[off.pti] & PRESENT) {
     return false;
-    pt[off.pti] = setPFN(PRESENT|WRITEABLE, pfn);
   }
   pt[off.pti] = setPFN(0, pfn);
   pt[off.pti] |= writeable ? WRITEABLE : 0;
@@ -103,6 +175,9 @@ void AddressSpace::initIdentityMapping() {
   dbg::panic_assert(core_init_page*PAGE_SIZE < 64*1024ULL, "core init page above 1MB\n");
 
   dbg::printf("initializing identity mapping...\n");
+
+  kernel_page_table_ = (reinterpret_cast<uint64_t>(pml4)-VIRTUAL_OFFSET);
+
   const size_t max = (max_addr + (PAGE_SIZE-1))/PAGE_SIZE;
   constexpr size_t start = IDENTITY_MAPPING/PAGE_SIZE;
   constexpr Offsets start_off{start};

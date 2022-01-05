@@ -7,8 +7,6 @@
 #include "registers.h"
 #include "asm.h"
 
-Thread *currentThread = nullptr;
-
 array<CPU> cpus(0);
 
 namespace sched {
@@ -16,10 +14,11 @@ namespace sched {
 void schedule() {
   bool IF = irq::getIF();
   irq::disableInterrupts();
+  auto cpu = getCPUStorage<CPU>(0);
 
-  auto old = currentThread;
-  currentThread = nextThread();
-  context_switch(&currentThread->current_stack_, &old->current_stack_);
+  auto old = cpu->current_thread_;
+  cpu->current_thread_ = nextThread();
+  context_switch(&cpu->current_thread_->current_stack_, &old->current_stack_);
 
   if (IF)
     irq::enableInterrupts();
@@ -27,7 +26,7 @@ void schedule() {
 
 void addThread(Thread *thread) {
   auto cpu = getCPUStorage<CPU>(0);
-  lock_guard(cpu->list_lock_);
+  lock_guard lock(cpu->list_lock_);
   auto &list = cpu->list_;
 
   if (list == nullptr) {
@@ -44,7 +43,7 @@ void addThread(Thread *thread) {
 
 Thread *nextThread() {
   auto cpu = getCPUStorage<CPU>(0);
-  lock_guard(cpu->list_lock_);
+  lock_guard lock(cpu->list_lock_);
   auto &list = cpu->list_;
   do {
     list = list->next_;
@@ -54,7 +53,7 @@ Thread *nextThread() {
 
 Thread *popThread() {
   auto cpu = getCPUStorage<CPU>(0);
-  lock_guard(cpu->list_lock_);
+  lock_guard lock(cpu->list_lock_);
   auto &list = cpu->list_;
   auto thread = list;
   list = list->prev_;
@@ -64,10 +63,13 @@ Thread *popThread() {
 }
 
 void launch() {
+  addThread(createKernelThread(reinterpret_cast<size_t>(idle), 0));
+
   uint64_t tmp;
-  currentThread = getCPUStorage<CPU>(0)->list_;
-  dbg::printf("crr {}\n", currentThread);
-  context_switch(&currentThread->current_stack_, &tmp);
+  auto cpu = getCPUStorage<CPU>(0);
+  cpu->current_thread_ = getCPUStorage<CPU>(0)->list_;
+  dbg::printf("crr {}\n", cpu->current_thread_);
+  context_switch(&cpu->current_thread_->current_stack_, &tmp);
   dbg::panic("end of scheduler launch function reached\n");
 }
 
@@ -75,7 +77,21 @@ void launch() {
   auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
   memset(thread, 0, sizeof(Thread));
   const auto regs = thrd::setupKernelRegisters(function, reinterpret_cast<size_t>(thread->stack_)+sizeof(thread->stack_), arg);
-  thread->current_stack_ = thrd::setupTask(thread->stack_, sizeof(thread->stack_), regs);
+  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
   return thread;
+}
+void idle() {
+  size_t tick = getCPUStorage<CPU>(0)->tick_;
+  schedule();
+  while(1) {
+    if (tick == getCPUStorage<CPU>(0)->tick_) {
+      hlt();
+      ++tick;
+    }
+    else {
+      tick = getCPUStorage<CPU>(0)->tick_;
+      schedule();
+    }
+  }
 }
 }

@@ -38,12 +38,18 @@ class AddressSpace {
     }
 
     static uint64_t kernel_page_table_;
-    AddressSpace() = delete;
+
+    AddressSpace();
 
     AddressSpace(AddressSpace &) = delete;
     AddressSpace(AddressSpace &&) = delete;
     AddressSpace &operator=(AddressSpace &) = delete;
     AddressSpace &operator=(AddressSpace &&) = delete;
+
+    bool mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx);
+    uint64_t unmapPFN(const uint64_t vpn);
+
+    uint64_t pml4_;
   private:
 
     struct Offsets {

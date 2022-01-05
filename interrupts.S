@@ -102,6 +102,7 @@ push r14
 push r15
 mov [rsi], rsp
 mov rsp, [rdi]
+call taskSwitch
 pop r15
 pop r14
 pop r13

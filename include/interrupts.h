@@ -1,5 +1,6 @@
 #pragma once
 #include "gdt.h"
+#include "vmm.h"
 
 extern "C" void context_return();
 extern "C" void context_switch(void *dest, void *src);
@@ -60,6 +61,9 @@ namespace irq {
 
 }
 struct ArchCPU {
+  constexpr ArchCPU() = default;
   TSS tss;
-  GDTE *gdt;
+  uint64_t cr3;
+  vmm::AddressSpace *address_space = nullptr;
+  GDTE *gdt = nullptr;
 };

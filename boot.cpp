@@ -62,7 +62,7 @@ void testfunc(uint64_t) {
   lock.lock();
   dbg::printf("{d}\n", x);
   lock.unlock();
-  while(1);
+  while(1) hlt();
 }
 
 extern "C"

@@ -1,6 +1,5 @@
 #pragma once
 #include "stddef.h"
-#include "debug.h"
 
 struct spinlock {
   void lock();
@@ -29,7 +28,7 @@ struct spinlock_irq {
   spinlock_irq &operator=(const spinlock_irq &&) = delete;
 private:
   volatile size_t locked_ = 0;
-  bool if_;
+  bool if_ = false;
 };
 
 using mutex = spinlock;

@@ -50,6 +50,10 @@ inline T *getCPUStorage(const size_t offset) {
   asm volatile("mov %0, gs:[%1]" : "=r"(value) : "r"(offset));
   return value;
 }
+template <typename T>
+inline void setCPUStorage(const size_t offset, T value) {
+  asm volatile("mov gs:[%1], %0" :: "r"(value), "r"(offset));
+}
 inline void atomic_inc(volatile size_t &var) {
   asm volatile("lock inc %0" :: "m"(var));
 }
@@ -63,4 +67,10 @@ inline void cbarrier() {
 }
 inline void barrier() {
   asm volatile("mfence" ::: "memory");
+}
+inline void hlt() {
+  asm volatile("hlt" ::: "memory");
+}
+inline void setCR3(size_t val) {
+  asm volatile("mov cr3, %0" :: "r"(val) : "memory");
 }

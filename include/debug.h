@@ -1,14 +1,18 @@
 #pragma once
 #include "stdint.h"
 #include "stddef.h"
+#include "asm.h"
+#include "sync.h"
 
 namespace dbg {
 
   void dump(void *data, size_t size);
 
-  void printf(const char *str);
+  void printfu(const char *str);
 
   void putchar(const char x);
+
+  extern spinlock_irq lock;
 
   template<typename T>
   void printdec(T arg) {
@@ -21,7 +25,7 @@ namespace dbg {
       buf[--i] = '0'+(arg%10);
       arg /= 10;
     } while(arg);
-    printf(buf+i);
+    printfu(buf+i);
   }
   template<typename T>
   void printhex(T arg) {
@@ -59,7 +63,7 @@ namespace dbg {
   }
   
   template<typename T, typename ...U>
-  void printf(const char *str, const T arg, const U... args) {
+  void printfu(const char *str, const T arg, const U... args) {
     while(*str) {
       if (*str == '{') {
         if (!*++str) {
@@ -73,12 +77,12 @@ namespace dbg {
                        is_same_type<T, const char *>::value ||
                        is_same_type<T, char * const>::value ||
                        is_same_type<T, const char * const>::value) {
-            printf(arg);
+            printfu(arg);
           }
           else {
             printhex(arg);
           }
-          return printf(++str, args...);
+          return printfu(++str, args...);
         }
         if (*++str != '}') {
           putchar('{');
@@ -87,11 +91,11 @@ namespace dbg {
         }
         if (x == 'x') {
           printhex(arg);
-          return printf(++str, args...);
+          return printfu(++str, args...);
         }
         if (x == 'd') {
           printdec(arg);
-          return printf(++str, args...);
+          return printfu(++str, args...);
         }
         putchar('{');
         putchar(x);
@@ -101,12 +105,17 @@ namespace dbg {
       ++str;
     }
   }
+  template<typename ...U>
+  void printf(const char *str, const U... args) {
+    lock_guard lck(lock);
+    printfu(str, args...);
+  }
 
   template<typename ...U>
   [[noreturn]] void panic(const char *str, const U... args) {
     printf("==========KERNEL PANIC==========\n");
     printf(str, args...);
-    while(1) asm volatile("hlt":::"memory");
+    while(1) hlt();
   }
 
   template<typename ...U>
