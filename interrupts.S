@@ -1,8 +1,20 @@
 .intel_syntax noprefix
 
 #define KERNEL_DS 0x20
+#define IA32_FS_BASE_MSR 0xc0000100
+#define IA32_GS_BASE_MSR 0xc0000101
+#define IA32_KERNEL_GS_BASE_MSR 0xc0000102
 
 .macro popall
+  mov eax, [rsp]
+  mov edx, [rsp+4]
+  mov ecx, IA32_GS_BASE_MSR
+  wrmsr
+  mov eax, [rsp+8]
+  mov edx, [rsp+12]
+  mov ecx, IA32_FS_BASE_MSR
+  wrmsr
+  add rsp, 16
   pop rax
   mov es, ax
   pop rax
@@ -47,6 +59,15 @@
   mov ax, KERNEL_DS
   mov ds, ax
   mov es, ax
+  mov ecx, IA32_FS_BASE_MSR
+  rdmsr
+  mov [rsp-4], edx
+  mov [rsp-8], eax
+  mov ecx, IA32_KERNEL_GS_BASE_MSR
+  rdmsr
+  mov [rsp-12], edx
+  mov [rsp-16], eax
+  sub rsp, 16
 .endm
 
 .macro irq n
@@ -72,11 +93,18 @@ asm_exception_handler_\n:
 .macro exceptionerror n
 .global asm_exception_handler_\n
 asm_exception_handler_\n:
+  push rax
+  mov rax, [rsp + 8]
+  swapgs
+  mov [gs:8], rax
+  pop rax
+  add rsp, 8
   pushall
   mov rdi, rsp
+  mov rsi, [gs:8]
+  swapgs
   call exception_handler_\n
   popall
-  add rsp, 8
   iretq
 .endm
 

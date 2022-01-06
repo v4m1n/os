@@ -5,6 +5,8 @@ struct Thread;
 
 namespace thrd {
   struct registers {
+    uint64_t gs_base;
+    uint64_t fs_base;
     uint64_t es;
     uint64_t ds;
     uint64_t rax;

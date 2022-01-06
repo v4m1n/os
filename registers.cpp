@@ -5,6 +5,7 @@
 #include "string.h"
 #include "scheduler.h"
 #include "Thread.h"
+#include "msr.h"
 
 namespace thrd {
 
@@ -25,6 +26,8 @@ registers setupKernelRegisters(const uint64_t start, const uint64_t stack, const
   regs.ds = KERNEL_DS;
   regs.ss = KERNEL_DS;
   regs.es = KERNEL_DS;
+  regs.fs_base = 0;
+  regs.gs_base = rdmsr(IA32_GS_BASE_MSR);
   return regs;
 }
 
@@ -58,8 +61,8 @@ void registerDump(const registers &regs) {
               regs.rsi, regs.rdi, regs.rbp, regs.r8,
               regs.r9, regs.r10, regs.r11, regs.r12,
               regs.r13, regs.r14, regs.r15, regs.cs,
-              regs.ds, regs.es, regs.ss, 0,
-              0, regs.rip, regs.rsp, regs.rflags);
+              regs.ds, regs.es, regs.ss, regs.fs_base,
+              regs.gs_base, regs.rip, regs.rsp, regs.rflags);
 }
 
 extern "C"

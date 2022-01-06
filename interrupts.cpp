@@ -82,9 +82,9 @@ void exception_handler_13() {
   dbg::panic("General Protection Fault\n");
 }
 extern "C"
-void exception_handler_14(thrd::registers *regs) {
+void exception_handler_14(thrd::registers *regs, uint64_t error) {
   thrd::registerDump(*regs);
-  dbg::panic("pf\n");
+  dbg::panic("pf {}\n", error);
 }
 
 extern "C"
