@@ -68,7 +68,6 @@ void launch() {
   uint64_t tmp;
   auto cpu = getCPUStorage<CPU>(0);
   cpu->current_thread_ = getCPUStorage<CPU>(0)->list_;
-  dbg::printf("crr {}\n", cpu->current_thread_);
   context_switch(&cpu->current_thread_->current_stack_, &tmp);
   dbg::panic("end of scheduler launch function reached\n");
 }

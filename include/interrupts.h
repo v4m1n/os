@@ -10,6 +10,7 @@ namespace irq {
   void initAPIC();
   void parseMPT();
   void parseRSDT();
+  void remapDisablePIC();
   void launchCores();
 
   inline bool getIF() {

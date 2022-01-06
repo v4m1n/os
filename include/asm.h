@@ -40,6 +40,21 @@ inline void outw(uint16_t port, uint16_t value) {
 inline void out(uint16_t port, uint32_t value) {
   asm volatile("out dx, eax" :: "d"(port), "a"(value) : "memory");
 }
+inline uint8_t inb(uint16_t port) {
+  uint8_t value;
+  asm volatile("in al, dx" : "=a"(value) : "d"(port) : "memory");
+  return value;
+}
+inline uint16_t inw(uint16_t port) {
+  uint16_t value;
+  asm volatile("inw ax, dx" : "=a"(value) : "d"(port) : "memory");
+  return value;
+}
+inline uint32_t in(uint16_t port) {
+  uint32_t value;
+  asm volatile("in eax, dx" : "=a"(value) : "d"(port) : "memory");
+  return value;
+}
 inline size_t xchg(volatile size_t &var, size_t value) {
   asm volatile("xchg %1, rax" : "=a"(value) : "m"(var), "a"(value));
   return value;

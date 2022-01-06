@@ -53,6 +53,7 @@
 .global asm_irq_handler_\n
 asm_irq_handler_\n:
   pushall
+  mov rdi, rsp
   call irq_handler_\n
   popall
   iretq
@@ -62,6 +63,7 @@ asm_irq_handler_\n:
 .global asm_exception_handler_\n
 asm_exception_handler_\n:
   pushall
+  mov rdi, rsp
   call exception_handler_\n
   popall
   iretq
@@ -71,6 +73,7 @@ asm_exception_handler_\n:
 .global asm_exception_handler_\n
 asm_exception_handler_\n:
   pushall
+  mov rdi, rsp
   call exception_handler_\n
   popall
   add rsp, 8

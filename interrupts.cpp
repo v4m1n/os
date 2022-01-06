@@ -82,7 +82,8 @@ void exception_handler_13() {
   dbg::panic("General Protection Fault\n");
 }
 extern "C"
-void exception_handler_14() {
+void exception_handler_14(thrd::registers *regs) {
+  thrd::registerDump(*regs);
   dbg::panic("pf\n");
 }
 
@@ -148,7 +149,7 @@ void initIdt() {
 
 #define APIC_MASK (1U<<16)
 
-static void remapDisablePIC() {
+void remapDisablePIC() {
   outb(PIC1_COMMAND, 0x10|0x01);
   outb(0x80, 0);
   outb(PIC2_COMMAND, 0x10|0x01);
@@ -171,8 +172,6 @@ static void remapDisablePIC() {
 
 void initAPIC() {
   dbg::printf("initializing APIC...\n");
-
-  remapDisablePIC();
 
   auto regs = cpuid(1);
   dbg::panic_assert((regs.rdx>>9)&1, "cpu has no local apic\n");
@@ -384,6 +383,7 @@ void core_boot(uint64_t id) {
   asm volatile("lgdt %0"::"m"(ldt):"memory");
   asm volatile("ltr ax"::"a"(TSSS):"memory");
   wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
+  wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
 
   initAPIC();
 
@@ -450,6 +450,7 @@ void launchCores() {
 
   cpus.at(0).id_ = apic->id;
   wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
+  wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
   auto &tss = cpus.at(0).arch_.tss;
   gdt[3].setBase((uint64_t)&tss);
 

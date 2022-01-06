@@ -45,6 +45,23 @@ uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const r
   return reinterpret_cast<uint64_t>(stack);
 }
 
+void registerDump(const registers &regs) {
+  dbg::printf("rax: {}, rbx: {}, rcx: {}\n"
+              "rdx: {}, rsi: {}, rdi: {}\n"
+              "rbp: {}, r8:  {}, r9:  {}\n"
+              "r10: {}, r11: {}, r12: {}\n"
+              "r13: {}, r14: {}, r15: {}\n"
+              "cs:  {}, ds:  {}, es:  {}\n"
+              "ss:  {}, fs:  {}, gs:  {}\n"
+              "rip: {}, rsp: {}, rfl: {}\n",
+              regs.rax, regs.rbx, regs.rcx, regs.rdx,
+              regs.rsi, regs.rdi, regs.rbp, regs.r8,
+              regs.r9, regs.r10, regs.r11, regs.r12,
+              regs.r13, regs.r14, regs.r15, regs.cs,
+              regs.ds, regs.es, regs.ss, 0,
+              0, regs.rip, regs.rsp, regs.rflags);
+}
+
 extern "C"
 void taskSwitch() {
   auto cpu = getCPUStorage<CPU>(0);

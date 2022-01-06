@@ -8,7 +8,7 @@ enable_language(C ASM)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP true)
 
-FILE(GLOB CPPSource *.cpp)
+FILE(GLOB CPPSource *.cpp driver/*.cpp)
 FILE(GLOB SSource *.S)
 #enable_language(ASM_NASM)
 #set(CMAKE_ASM_NASM_COMPILER "nasm")
@@ -32,6 +32,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/lin
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/containers)
+include_directories(${PROJECT_SOURCE_DIR}/include/driver)
 
 add_custom_command(OUTPUT disk.img
   COMMAND gunzip "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.gz" -c > ${CMAKE_CURRENT_BINARY_DIR}/disk.img
@@ -53,9 +54,9 @@ add_custom_command(OUTPUT dsk
   
 
 add_custom_target(qemu
-    COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img -enable-kvm -cpu host
-    COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img -enable-kvm -cpu host`"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -enable-kvm -cpu host
+  COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -enable-kvm -cpu host`"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 

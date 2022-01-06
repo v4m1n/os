@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "Thread.h"
 #include "sync.h"
+#include "pci.h"
 #include "asm.h"
 
 [[maybe_unused]] const struct
@@ -85,10 +86,13 @@ extern "C"
   dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
 
   irq::initIdt();
+  irq::remapDisablePIC();
   irq::initAPIC();
   irq::parseRSDT();
+  pci::deviceDetection();
   irq::launchCores();
   pml4[0] = 0;
+  *(uint32_t*)3 = 4;
 
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));

@@ -39,4 +39,6 @@ uint64_t *push(uint64_t *stack, uint64_t value);
 registers setupKernelRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1);
 
 uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs);
+
+void registerDump(const registers &regs);
 }
