@@ -74,12 +74,14 @@ extern "C"
 void exception_handler_0() {
 }
 extern "C"
-void exception_handler_8() {
-  dbg::printf("Double Fault\n");
+void exception_handler_8(thrd::registers *regs, uint64_t error) {
+  thrd::registerDump(*regs);
+  dbg::printf("Double Fault {}\n", error);
 }
 extern "C"
-void exception_handler_13() {
-  dbg::panic("General Protection Fault\n");
+void exception_handler_13(thrd::registers *regs, uint64_t error) {
+  thrd::registerDump(*regs);
+  dbg::panic("General Protection Fault {}\n", error);
 }
 extern "C"
 void exception_handler_14(thrd::registers *regs, uint64_t error) {
