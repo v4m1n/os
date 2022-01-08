@@ -375,7 +375,8 @@ void core_boot(uint64_t id) {
   auto lgdt = cpu.arch_.gdt;
   auto &tss = cpu.arch_.tss;
   memcpy(lgdt, gdt, sizeof(gdt));
-  lgdt[3].setBase((uint64_t)&tss);
+  lgdt[5].setBase((uint64_t)&tss);
+  *(uint64_t*)&lgdt[6] = ((uint64_t)&tss) >> 32;
 
   struct {
     uint16_t size_;
@@ -429,9 +430,9 @@ asm (R"(
       mov eax, cr0
       or eax, (1<<31)
       mov cr0, eax
-      ljmp 0x10:1f-0b
+      ljmp 0x8:1f-0b
    1: .code64
-      mov ax, 0x20
+      mov ax, 0x10
       mov ss, ax
       mov ds, ax
       mov es, ax
@@ -454,7 +455,8 @@ void launchCores() {
   wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
   wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
   auto &tss = cpus.at(0).arch_.tss;
-  gdt[3].setBase((uint64_t)&tss);
+  gdt[5].setBase((uint64_t)&tss);
+  *(uint64_t*)&gdt[6] = ((uint64_t)&tss) >> 32;
 
   auto x = vmm::pageAddress<uint8_t *>(core_init_page);
   auto count = reinterpret_cast<volatile uint64_t *>(x+1024);

@@ -39,17 +39,17 @@ size_t VIRTUAL_OFFSET = (size_t)LS_Virt;
 size_t KERNEL_START = (size_t)kernel_start;
 size_t KERNEL_END = (size_t)kernel_end;
 
-GDTE gdt[6] = {{},
+GDTE gdt[7] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0, .base4=0, .reserved=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=0,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0},
-               {.limit1=sizeof(TSS), .base1=0, .base2=0, .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
-                .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=0, .base3=0, .base4=0, .reserved=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=3,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0, .base4=0, .reserved=0},
+                .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=3,
-                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0, .base4=0, .reserved=0}};
+                .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
+               {.limit1=sizeof(TSS), .base1=0, .base2=0, .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
+                .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=0, .base3=0}};
 
 uint64_t x;
 spinlock lock;

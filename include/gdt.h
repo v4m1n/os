@@ -18,17 +18,14 @@ struct GDTE {
   uint8_t size : 1;
   uint8_t granularity : 1;
   uint8_t base3;
-  uint32_t base4;
-  uint32_t reserved;
-  inline void setBase(uint64_t addr) {
+  inline void setBase(uint32_t addr) {
     base1 = (uint16_t)addr;
     base2 = (uint8_t)(addr>>16);
     base3 = (uint8_t)(addr>>24);
-    base4 = (uint32_t)(addr>>32);
   }
 } __attribute__((packed));
 
-static_assert(sizeof(GDTE) == 16);
+static_assert(sizeof(GDTE) == 8);
 
 struct TSS {
   uint32_t reserved1;
@@ -59,11 +56,11 @@ struct TSS {
 
 static_assert(sizeof(TSS) == 104);
 
-extern GDTE gdt[6];
+extern GDTE gdt[7];
 extern TSS tss;
 
-#define KERNEL_CS 0x10
-#define KERNEL_DS 0x20
-#define TSSS 0x30
-#define USER_CS 0x43
-#define USER_DS 0x53
+#define KERNEL_CS 0x8
+#define KERNEL_DS 0x10
+#define USER_CS 0x1b
+#define USER_DS 0x23
+#define TSSS 0x28
