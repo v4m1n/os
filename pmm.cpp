@@ -88,6 +88,8 @@ void initPageManager() {
     }
   }
   memcpy(bitmap_, init_bitmap, PAGE_SIZE);
+
+  vmm::AddressSpace::initUCIdentityMapping();
 }
 
 size_t allocZeroPFN(size_t size) {

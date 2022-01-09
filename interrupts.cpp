@@ -184,8 +184,7 @@ void initAPIC() {
   dbg::printf("APIC base {}\n", base);
   auto pfn = base/PAGE_SIZE;
 
-  vmm::AddressSpace::setKernelCaching(vmm::pageAddress<size_t>(pfn)/PAGE_SIZE, false);
-  apic = vmm::pageAddress<APIC *>(pfn);
+  apic = vmm::pageUCAddress<APIC *>(pfn);
   dbg::printf("LAPIC ID: {}\n", apic->id);
   dbg::printf("LAPIC version: {}\n", apic->version);
 

@@ -23,8 +23,10 @@ class AddressSpace {
     constexpr static size_t GLOBAL = (1ULL<<8);
     constexpr static size_t EXECUTION_DISABLED = (1ULL<<63);
     constexpr static uint64_t IDENTITY_MAPPING = 0xffff'8000'0000'0000ULL;
+    constexpr static uint64_t UC_IDENTITY_MAPPING = 0xffff'a000'0000'0000ULL;
 
     static void initIdentityMapping();
+    static void initUCIdentityMapping();
 
     static bool mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable=1, const uint64_t nx=0);
 
@@ -74,5 +76,13 @@ template<typename T>
 inline T identAddress(size_t addr) {
   return reinterpret_cast<T>(AddressSpace::IDENTITY_MAPPING | addr);
 }
+template<typename T>
+inline T pageUCAddress(size_t pfn) {
+  return reinterpret_cast<T>(AddressSpace::UC_IDENTITY_MAPPING | pfn*PAGE_SIZE);
+}
+template<typename T>
+inline T identUCAddress(size_t addr) {
+  return reinterpret_cast<T>(AddressSpace::UC_IDENTITY_MAPPING | addr);
 
-};
+}
+}

@@ -17,6 +17,8 @@ class NVMe {
     uint64_t admin_comp_queue_;
   };
 
+  static_assert(sizeof(NVMeBar0) == 0x38, "NVMeBar0 is not the correct size");
+
   uint8_t bus_;
   uint8_t dev_;
   uint32_t max_queue_ent_;

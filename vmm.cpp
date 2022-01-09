@@ -29,19 +29,19 @@ bool AddressSpace::mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t
 
   if ((pml4[off.pml4i] & PRESENT) == 0) {
     size_t pfn = pmm::allocZeroPFN();
-    pml4[off.pml4i] = setPFN(PRESENT|WRITEABLE, pfn);
+    pml4[off.pml4i] = setPFN(PRESENT|WRITEABLE|USER_ACCESS, pfn);
   }
   pdpt = pageAddress<uint64_t *>(getPFN(pml4[off.pml4i]));
 
   if ((pdpt[off.pdpti] & PRESENT) == 0) {
     size_t pfn = pmm::allocZeroPFN();
-    pdpt[off.pdpti] = setPFN(PRESENT|WRITEABLE, pfn);
+    pdpt[off.pdpti] = setPFN(PRESENT|WRITEABLE|USER_ACCESS, pfn);
   }
   pd = pageAddress<uint64_t *>(getPFN(pdpt[off.pdpti]));
 
   if ((pd[off.pdi] & PRESENT) == 0) {
     size_t pfn = pmm::allocZeroPFN();
-    pd[off.pdi] = setPFN(PRESENT|WRITEABLE, pfn);
+    pd[off.pdi] = setPFN(PRESENT|WRITEABLE|USER_ACCESS, pfn);
   }
   pt = pageAddress<uint64_t *>(getPFN(pd[off.pdi]));
 
@@ -190,6 +190,7 @@ void AddressSpace::initIdentityMapping() {
     size_t pdpt_pfn = pmm::allocPFN();
     uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
     memset(pdpt, 0, PAGE_SIZE);
+    dbg::panic_assert(pml4[pml4i] == 0, "pml4[pml4i] == 0\n");
     pml4[pml4i] = setPFN(PRESENT|WRITEABLE, pdpt_pfn);
 
     for (size_t pdpti = 0; pdpti < 512; ++pdpti) {
@@ -209,6 +210,7 @@ void AddressSpace::initIdentityMapping() {
     size_t pdpt_pfn = pmm::allocPFN();
     uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
     memset(pdpt, 0, PAGE_SIZE);
+    dbg::panic_assert(pml4[end_off.pml4i] == 0, "pml4[end_off.pml4i] == 0\n");
     pml4[end_off.pml4i] = setPFN(PRESENT|WRITEABLE, pdpt_pfn);
 
     for (size_t pdpti = 0; pdpti <= end_off.pdpti; ++pdpti) {
@@ -225,5 +227,60 @@ void AddressSpace::initIdentityMapping() {
   }
 }
 
+void AddressSpace::initUCIdentityMapping() {
+  constinit static bool called = false;
+  dbg::panic_assert(!called, "initIdentityMapping has already been called\n");
+  called = true;
+
+  dbg::printf("initializing uncached identity mapping...\n");
+
+  const size_t max = (max_addr + (PAGE_SIZE-1))/PAGE_SIZE;
+  constexpr size_t start = UC_IDENTITY_MAPPING/PAGE_SIZE;
+  constexpr Offsets start_off{start};
+  Offsets end_off{max+start};
+  dbg::panic_assert(max_addr <= 1024ULL*1024ULL*1024ULL*1024ULL, "physical address space is over 1TB\n");
+  static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);
+  size_t pfn = 0;
+
+  for (size_t pml4i = start_off.pml4i; pml4i < end_off.pml4i; ++pml4i) {
+    size_t pdpt_pfn = pmm::allocPFN();
+    uint64_t *pdpt = pageAddress<uint64_t *>(pdpt_pfn);
+    memset(pdpt, 0, PAGE_SIZE);
+    dbg::panic_assert(pml4[pml4i] == 0, "pml4[pml4i] == 0\n");
+    pml4[pml4i] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pdpt_pfn);
+
+    for (size_t pdpti = 0; pdpti < 512; ++pdpti) {
+      size_t pd_pfn = pmm::allocPFN();
+      uint64_t *pd = pageAddress<uint64_t *>(pd_pfn);
+      memset(pd, 0, PAGE_SIZE);
+      pdpt[pdpti] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pd_pfn);
+
+      for (size_t pdi = 0; pdi < 512; ++pdi) {
+        pd[pdi] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED|HUGE_PAGE, pfn);
+        pfn += PAGE_SIZE*512;
+      }
+    }
+  }
+
+  {
+    size_t pdpt_pfn = pmm::allocPFN();
+    uint64_t *pdpt = pageAddress<uint64_t *>(pdpt_pfn);
+    memset(pdpt, 0, PAGE_SIZE);
+    dbg::panic_assert(pml4[end_off.pml4i] == 0, "pml4[end_off.pml4i] == 0\n");
+    pml4[end_off.pml4i] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pdpt_pfn);
+
+    for (size_t pdpti = 0; pdpti <= end_off.pdpti; ++pdpti) {
+      size_t pd_pfn = pmm::allocPFN();
+      uint64_t *pd = pageAddress<uint64_t *>(pd_pfn);
+      memset(pd, 0, PAGE_SIZE);
+      pdpt[pdpti] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pd_pfn);
+
+      for (size_t pdi = 0; pdi < 512; ++pdi) {
+        pd[pdi] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED|HUGE_PAGE, pfn);
+        pfn += 512;
+      }
+    }
+  }
+}
 };
 
