@@ -16,10 +16,6 @@ static size_t bitmap_size_;
 static size_t lowest_free_;
 static size_t num_pages_;
 
-
-static struct page * const page_metadata_ = (struct page *)0xffff'9000'0000'0000ULL;
-
-
 void initPageManager() { 
   static size_t call = 0;
   dbg::panic_assert(call++ == 0, "trying to construct a second PageManager\n");
