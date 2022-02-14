@@ -2,6 +2,7 @@
 #include "nvme.h"
 #include "debug.h"
 #include "vmm.h"
+#include "interrupts.h"
 
 NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   pci::writePCIConfig<uint16_t>(bus, dev, 0, 0x4, 1U<<4 | 1U<<2 | 1U<<1);
@@ -33,9 +34,9 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   admin_sub_queue_ = vmm::identUCAddress<AdminSubmission *>(bar_->admin_sub_queue_);
   admin_comp_queue_ = vmm::identUCAddress<AdminCompletion *>(bar_->admin_comp_queue_);
 
+  bar_->controller_conf_ |= 1;
   bar_->admin_queue_attr_ = 64|(64<<16);
 
-  bar_->controller_conf_ |= 1;
   while(atomic_fetch(bar_->controller_status_)&1) asm volatile("pause" ::: "memory");
   dbg::printf("nvme device ready\n");
 
@@ -47,7 +48,9 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
   sub.cdw10_ = 2;
   sendAdminCommand(sub);
-  while(1) dbg::printf("{d}", admin_comp_queue_->phase_tag_);
+  volatile auto x = admin_comp_queue_;
+  irq::enableInterrupts();
+  while(1) dbg::printf("{d}", x->phase_tag_);
 }
 
 
