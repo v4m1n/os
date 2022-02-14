@@ -44,7 +44,7 @@ add_custom_target(image
   DEPENDS disk.img
 )
 add_library(OBJS OBJECT disk.img)
-
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/disk/grub.cfg ${CMAKE_CURRENT_BINARY_DIR}/grub.cfg COPYONLY)
 add_custom_command(OUTPUT dsk
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/disk/setup.sh
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

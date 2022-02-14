@@ -197,13 +197,13 @@ void initAPIC() {
 
 void *searchMPT() {
   uint32_t * const bios_start = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+639*1024U);
-  for (size_t i = 0; i < 1024ULL/4; ++i) {
+  for (size_t i = 0; i < 1024ULL/sizeof(*bios_start); ++i) {
     if (bios_start[i] == 0x5f504d5fU) {
       return &bios_start[i];
     }
   }
   uint32_t * const bios_rom = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+0xE0000U);
-  for (size_t i = 0; i < (1ULL<<17)/4; ++i) {
+  for (size_t i = 0; i < (1ULL<<17)/sizeof(*bios_rom); ++i) {
     if (bios_rom[i] == 0x5f504d5fU) {
       return &bios_rom[i];
     }

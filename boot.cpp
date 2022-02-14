@@ -15,15 +15,22 @@
 #include "pci.h"
 #include "asm.h"
 
-[[maybe_unused]] const struct
+[[maybe_unused]] const struct __attribute__((packed))
 {
     unsigned int magic = 0xe85250d6;
     unsigned int flags = 0;
-    unsigned int size = 32*6;
-    unsigned int checksum = -(0xe85250d6U+32U*6U);
-    unsigned int end_tag = 0;
-    unsigned int end_tag2 = 8;
-} multiboot __attribute__ ((section (".multiboot")));
+    unsigned int size = 4*9;
+    unsigned int checksum = -(magic+size);
+    struct __attribute__((packed)) {
+        unsigned short type = 5;
+        unsigned short flags = 0;
+        unsigned int size = 20;
+        unsigned int widht = 0;
+        unsigned int height = 0;
+        unsigned int depth = 0;
+    } framebuffer;
+    unsigned int end_tag[3] = {0,0,8};
+} multiboot  __attribute__ ((section (".multiboot")));
 
 
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]]
@@ -54,8 +61,10 @@ GDTE gdt[7] = {{},
 uint64_t x;
 spinlock lock;
 
-void testfunc(uint64_t) {
+void testfunc(uint64_t j) {
   for(size_t i = 0; i < 10000000; ++i) {
+    dbg::putchar('A'+j);
+    
     lock.lock();
     ++x;
     lock.unlock();
@@ -92,7 +101,6 @@ extern "C"
   pci::deviceDetection();
   irq::launchCores();
   pml4[0] = 0;
-  *(uint32_t*)3 = 4;
 
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
