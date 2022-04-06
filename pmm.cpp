@@ -4,10 +4,11 @@
 #include "string.h"
 #include "vmm.h"
 
-extern size_t KERNEL_START;
-extern size_t KERNEL_END;
-extern size_t VIRTUAL_OFFSET;
 extern size_t max_addr;
+
+extern size_t LS_Virt;
+extern size_t kernel_start;
+extern size_t kernel_end;
 
 namespace pmm {
 MemoryRegion mem_regions[16];
@@ -46,8 +47,8 @@ void initPageManager() {
 
  
   
-  const size_t start = (KERNEL_START-VIRTUAL_OFFSET)/PAGE_SIZE;
-  const size_t end = ((KERNEL_END-VIRTUAL_OFFSET)+PAGE_SIZE-1)/PAGE_SIZE;
+  const size_t start = (((size_t)&kernel_start)-(size_t)&LS_Virt)/PAGE_SIZE;
+  const size_t end = ((((size_t)&kernel_end)-(size_t)&LS_Virt)+PAGE_SIZE-1)/PAGE_SIZE;
  
   for (size_t j = start; j < end; ++j) {
     if (j >= 8ULL*sizeof(init_bitmap)) {

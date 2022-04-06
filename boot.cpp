@@ -37,14 +37,12 @@
 uint8_t boot_stack[PAGE_SIZE*2];
 
 
-extern void *LS_Virt[];
+extern size_t LS_Virt;
 extern uint8_t *bss_end[];
 extern uint8_t *bss_start[];
-extern uint8_t *kernel_start[];
-extern uint8_t *kernel_end[];
-size_t VIRTUAL_OFFSET = (size_t)LS_Virt;
-size_t KERNEL_START = (size_t)kernel_start;
-size_t KERNEL_END = (size_t)kernel_end;
+extern size_t kernel_start;
+extern size_t kernel_end;
+
 
 GDTE gdt[7] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
@@ -77,7 +75,7 @@ void testfunc(uint64_t j) {
 
 extern "C"
 [[noreturn]] void boot(uint64_t mbootheader) {
-  mbootheader += VIRTUAL_OFFSET;
+  mbootheader += (size_t)&LS_Virt;
   dbg::printf("booting...\n");
   dbg::printf("clearing bss...\n");
   memset(bss_start, 0, bss_end-bss_start);
@@ -87,7 +85,7 @@ extern "C"
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
   irq::parseMPT();
-  vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-VIRTUAL_OFFSET;
+  vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-(size_t)&LS_Virt;
   pmm::initPageManager();
   kmm::kmalloc_init();
   
@@ -98,7 +96,7 @@ extern "C"
   irq::remapDisablePIC();
   irq::initAPIC();
   irq::parseRSDT();
-  pci::deviceDetection();
+  //pci::deviceDetection();
   irq::launchCores();
   pml4[0] = 0;
 

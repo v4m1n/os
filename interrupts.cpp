@@ -112,7 +112,8 @@ void irq_handler_def() {
   dbg::printf("unknown int\n");
 }
 
-extern size_t VIRTUAL_OFFSET;
+extern size_t LS_Virt;
+
 
 namespace irq {
 
@@ -196,13 +197,13 @@ void initAPIC() {
 }
 
 void *searchMPT() {
-  uint32_t * const bios_start = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+639*1024U);
+  uint32_t * const bios_start = reinterpret_cast<uint32_t *>(((size_t)&LS_Virt)+639*1024U);
   for (size_t i = 0; i < 1024ULL/sizeof(*bios_start); ++i) {
     if (bios_start[i] == 0x5f504d5fU) {
       return &bios_start[i];
     }
   }
-  uint32_t * const bios_rom = reinterpret_cast<uint32_t *>(VIRTUAL_OFFSET+0xE0000U);
+  uint32_t * const bios_rom = reinterpret_cast<uint32_t *>(((size_t)&LS_Virt)+0xE0000U);
   for (size_t i = 0; i < (1ULL<<17)/sizeof(*bios_rom); ++i) {
     if (bios_rom[i] == 0x5f504d5fU) {
       return &bios_rom[i];
@@ -215,9 +216,9 @@ void parseMPT() {
 
   MP *mp = reinterpret_cast<MP *>(searchMPT());
   dbg::panic_assert(mp->address, "mp config table does not exist\n");
-  MPHead *mp_head = reinterpret_cast<MPHead *>(mp->address+VIRTUAL_OFFSET);
+  MPHead *mp_head = reinterpret_cast<MPHead *>(mp->address+((size_t)&LS_Virt));
   dbg::panic_assert(mp_head->signature_ == 0x504d4350U, "MP config signature incorrect\n");
-  size_t cur = mp->address+sizeof(MPHead)+VIRTUAL_OFFSET;
+  size_t cur = mp->address+sizeof(MPHead)+((size_t)&LS_Virt);
   dbg::printf("MP Table:\n");
   for (size_t i = 0; i < mp_head->entry_cnt_; ++i) {
     uint8_t type = *reinterpret_cast<uint8_t *>(cur);
@@ -267,7 +268,7 @@ void parseMPT() {
 }
 
 RSDP *searchRSDP() {
-  uint64_t * const bios_rom = reinterpret_cast<uint64_t *>(VIRTUAL_OFFSET+0xE0000U);
+  uint64_t * const bios_rom = reinterpret_cast<uint64_t *>(((size_t)&LS_Virt)+0xE0000U);
   for (size_t i = 0; i < (1ULL<<17)/8; ++i) {
     if (bios_rom[i] == 0x2052545020445352ULL) {
       return reinterpret_cast<RSDP *>(&bios_rom[i]);
@@ -471,14 +472,14 @@ void launchCores() {
 
   auto gdt32 = reinterpret_cast<ldt *>(x+1024+16);
   gdt32->size_ = sizeof(gdt)-1;
-  gdt32->addr_ = reinterpret_cast<uint64_t>(gdt) - VIRTUAL_OFFSET;
+  gdt32->addr_ = reinterpret_cast<uint64_t>(gdt) - ((size_t)&LS_Virt);
   auto gdt64 = reinterpret_cast<ldt *>(x+1024+32);
   gdt64->size_ = sizeof(gdt)-1;
   gdt64->addr_ = reinterpret_cast<uint64_t>(gdt);
   auto idtp = reinterpret_cast<ldt *>(x+1024+48);
   idtp->size_ = sizeof(idt)-1;
   idtp->addr_ = reinterpret_cast<uint64_t>(idt);
-  *reinterpret_cast<uint64_t *>(x+1024+64) = reinterpret_cast<uint64_t>(pml4) - VIRTUAL_OFFSET;
+  *reinterpret_cast<uint64_t *>(x+1024+64) = reinterpret_cast<uint64_t>(pml4) - ((size_t)&LS_Virt);
 
   auto stack = reinterpret_cast<uint64_t *>(1024+80);
   for (const auto &x : cpus) {
