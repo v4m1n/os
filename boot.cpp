@@ -53,14 +53,14 @@ GDTE gdt[7] = {{},
                 .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=0, .descriptor=1, .priv=3,
                 .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
-               {.limit1=sizeof(TSS), .base1=0, .base2=0, .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
+               {.limit1=sizeof(TSS)-1, .base1=0, .base2=0, .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
                 .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=0, .base3=0}};
 
 uint64_t x;
 spinlock lock;
 
 void testfunc(uint64_t j) {
-  for(size_t i = 0; i < 10000000; ++i) {
+  for(size_t i = 0; i < 10000; ++i) {
     dbg::putchar('A'+j);
     
     lock.lock();
@@ -104,6 +104,11 @@ extern "C"
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 4));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 5));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 6));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 7));
+  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 8));
 
   sched::launch();
 

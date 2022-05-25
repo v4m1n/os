@@ -456,6 +456,8 @@ void launchCores() {
   wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
   wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpus.at(0)));
   auto &tss = cpus.at(0).arch_.tss;
+  memset(&cpus.at(0).arch_.tss, 0, sizeof(TSS));
+  cpus.at(0).arch_.tss.iopb_offset = sizeof(TSS);
   gdt[5].setBase((uint64_t)&tss);
   *(uint64_t*)&gdt[6] = ((uint64_t)&tss) >> 32;
 
