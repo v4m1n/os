@@ -15,17 +15,17 @@ uint64_t *push(uint64_t *stack, uint64_t value) {
   return stack;
 }
 
-registers setupKernelRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1) {
+registers setupRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1, const uint64_t cs, const uint64_t ds) {
   registers regs;
   memset(&regs, 0, sizeof(regs));
   regs.rflags = 0x202;
   regs.rip = start;
   regs.rsp = stack;
   regs.rdi = arg1;
-  regs.cs = KERNEL_CS;
-  regs.ds = KERNEL_DS;
-  regs.ss = KERNEL_DS;
-  regs.es = KERNEL_DS;
+  regs.cs = cs;
+  regs.ds = ds;
+  regs.ss = ds;
+  regs.es = ds;
   regs.fs_base = 0;
   regs.gs_base = rdmsr(IA32_GS_BASE_MSR);
   return regs;

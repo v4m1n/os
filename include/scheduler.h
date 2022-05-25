@@ -36,4 +36,6 @@ namespace sched {
 
   [[nodiscard]] Thread *createKernelThread(size_t function, size_t arg);
 
+  [[nodiscard]] Thread *createUserThread(size_t function, size_t arg);
+
 }

@@ -103,12 +103,14 @@ extern "C"
 
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 4));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 5));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 6));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 7));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 8));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 4));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 5));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 6));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 7));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 8));
+  sched::addThread(sched::createUserThread(0, 8));
+  sched::addThread(sched::createUserThread(1, 0xdead));
 
   sched::launch();
 

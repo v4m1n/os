@@ -75,8 +75,50 @@ void launch() {
 [[nodiscard]] Thread *createKernelThread(size_t function, size_t arg) {
   auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
   memset(thread, 0, sizeof(Thread));
-  const auto regs = thrd::setupKernelRegisters(function, reinterpret_cast<size_t>(thread->stack_)+sizeof(thread->stack_), arg);
+  const auto regs = thrd::setupRegisters(function, reinterpret_cast<size_t>(thread->stack_)+sizeof(thread->stack_), arg);
   thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
+  return thread;
+}
+
+extern "C" uint8_t test_code_start;
+extern "C" uint8_t test_code_end;
+
+asm(R"(
+.global test_code_start
+.global test_code_end
+test_code_start:
+movq %rax, %rdi
+movq %rbx, 1
+int 0x80
+movq %rcx, 0xdeadbeef
+int 0x80
+movq %rdx, 0x41414141414141
+int 0x80
+
+
+1: jmp 1b
+
+
+
+test_code_end:
+)");
+
+[[nodiscard]] Thread *createUserThread([[maybe_unused]]size_t function, size_t arg) {
+  auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
+  memset(thread, 0, sizeof(Thread));
+
+  constexpr uint64_t CODE_START = 0x8000000ULL;
+  constexpr uint64_t STACK_START = (1ULL<<47)-PAGE_SIZE;
+
+  const auto regs = thrd::setupRegisters(CODE_START, STACK_START+PAGE_SIZE, arg, USER_CS, USER_DS);
+  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
+  auto code_page = pmm::allocZeroPFN();
+  auto stack_page = pmm::allocZeroPFN();
+  auto code = vmm::pageAddress<void *>(code_page);
+  memcpy(code, &test_code_start, (&test_code_end-&test_code_start));
+  thread->address_space_->mapPFN(CODE_START/PAGE_SIZE, code_page, 0, 0);
+  thread->address_space_->mapPFN(STACK_START/PAGE_SIZE, stack_page, 1, 0);
+
   return thread;
 }
 void idle() {

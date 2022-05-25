@@ -96,8 +96,9 @@ void irq_handler_48() {
   sched::schedule();
 }
 extern "C"
-void irq_handler_128() {
-  dbg::printf("hello\n");
+void irq_handler_128(thrd::registers *regs) {
+  dbg::printf("syscall with parameters: \n");
+  thrd::registerDump(*regs);
 }
 extern "C"
 void irq_handler_254() {
@@ -133,6 +134,9 @@ void initIdt() {
     //el = IntDes(reinterpret_cast<uint64_t>(asm_irq_handler_def), KERNEL_CS, INTERRUPT_GATE, 0, 1);
   }
 
+  //syscall
+  idt[128].dpl_ = 3;
+
   struct lidt {
     uint16_t size_;
     uint64_t addr_;
@@ -142,7 +146,6 @@ void initIdt() {
   lidt tmp{static_cast<uint16_t>(sizeof(idt)-1), reinterpret_cast<uint64_t>(idt)};
 
   asm volatile("lidt %0"::"m"(tmp):"memory");
-  //asm volatile("int 0x80");
 }
 
 #define PIC1_COMMAND 0x20
