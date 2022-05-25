@@ -3,16 +3,24 @@ LS_Virt = 0xFFFFFFFF80000000;
 LS_Phys = 0x100000;
 SECTIONS 
 {
-    . = 0xFFFFFFFF80000000+0x100000;
+    . = LS_Virt+LS_Phys;
     kernel_start = .;
 
-    .text : AT(ADDR(.text)-0xFFFFFFFF80000000)
+    .text ALIGN(4096) : AT(ADDR(.text)-LS_Virt)
     {
         *(.multiboot)
         *(.text)
     }
+    .data ALIGN(4096) : AT(ADDR(.data)-LS_Virt)
+    {
+        *(.data)
+    }
 
-    .bss : AT(ADDR(.bss)-0xFFFFFFFF80000000)
+    .rodata ALIGN(4096) : AT(ADDR(.rodata)-LS_Virt)
+    {
+        *(.rodata)
+    }
+    .bss ALIGN(4096) : AT(ADDR(.bss)-LS_Virt)
     {
         bss_start = .;
         *(.bss)

@@ -19,6 +19,19 @@ namespace pci {
 
     static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4, "invalid read size");
   }
+  template<typename T>
+  void writePCIConfig(uint32_t bus, uint32_t slot, uint32_t func, uint32_t offset, T value) {
+    uint32_t address = bus<<16 | slot<<11 | func<<8 | offset | 1U<<31;
+    out(PCI_CONFIG_ADDRESS, address);
+    if constexpr (sizeof(T) == 1)
+      outb(PCI_CONFIG_DATA, value);
+    else if constexpr (sizeof(T) == 2)
+      outw(PCI_CONFIG_DATA, value);
+    else if constexpr (sizeof(T) == 4)
+      out(PCI_CONFIG_DATA, value);
+
+    static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4, "invalid read size");
+  }
   void deviceDetection();
 
 }

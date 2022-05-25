@@ -72,6 +72,11 @@ inline void setCPUStorage(const size_t offset, T value) {
 inline void atomic_inc(volatile size_t &var) {
   asm volatile("lock inc %0" :: "m"(var));
 }
+inline uint32_t atomic_fetch(volatile uint32_t &var) {
+  uint32_t value;
+  asm volatile("mov eax, %1" : "=a"(value) : "m"(var));
+  return value;
+}
 inline size_t atomic_fetch(volatile uint64_t &var) {
   size_t value;
   asm volatile("mov rax, %1" : "=a"(value) : "m"(var));

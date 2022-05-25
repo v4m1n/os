@@ -9,8 +9,9 @@
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pd[512];
 
 extern size_t max_addr;
-extern size_t VIRTUAL_OFFSET;
 extern size_t core_init_page;
+extern size_t LS_Virt;
+
 
 namespace vmm {
 uint64_t AddressSpace::kernel_page_table_;
@@ -176,7 +177,7 @@ void AddressSpace::initIdentityMapping() {
 
   dbg::printf("initializing identity mapping...\n");
 
-  kernel_page_table_ = (reinterpret_cast<uint64_t>(pml4)-VIRTUAL_OFFSET);
+  kernel_page_table_ = (reinterpret_cast<uint64_t>(pml4)-(size_t)&LS_Virt);
 
   const size_t max = (max_addr + (PAGE_SIZE-1))/PAGE_SIZE;
   constexpr size_t start = IDENTITY_MAPPING/PAGE_SIZE;
@@ -186,16 +187,22 @@ void AddressSpace::initIdentityMapping() {
   static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);
   size_t pfn = 0;
 
+
+
+  size_t cr3;
+  asm ("mov %0, %%cr3":"=r"(cr3));
+  dbg::printf("{} {}\n", pml4, cr3);
+
   for (size_t pml4i = start_off.pml4i; pml4i < end_off.pml4i; ++pml4i) {
     size_t pdpt_pfn = pmm::allocPFN();
-    uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
+    uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + (size_t)&LS_Virt);
     memset(pdpt, 0, PAGE_SIZE);
     dbg::panic_assert(pml4[pml4i] == 0, "pml4[pml4i] == 0\n");
     pml4[pml4i] = setPFN(PRESENT|WRITEABLE, pdpt_pfn);
 
     for (size_t pdpti = 0; pdpti < 512; ++pdpti) {
       size_t pd_pfn = pmm::allocPFN();
-      uint64_t *pd = (uint64_t *)(pd_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
+      uint64_t *pd = (uint64_t *)(pd_pfn*PAGE_SIZE + (size_t)&LS_Virt);
       memset(pd, 0, PAGE_SIZE);
       pdpt[pdpti] = setPFN(PRESENT|WRITEABLE, pd_pfn);
 
@@ -208,14 +215,14 @@ void AddressSpace::initIdentityMapping() {
 
   {
     size_t pdpt_pfn = pmm::allocPFN();
-    uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
+    uint64_t *pdpt = (uint64_t *)(pdpt_pfn*PAGE_SIZE + (size_t)&LS_Virt);
     memset(pdpt, 0, PAGE_SIZE);
     dbg::panic_assert(pml4[end_off.pml4i] == 0, "pml4[end_off.pml4i] == 0\n");
     pml4[end_off.pml4i] = setPFN(PRESENT|WRITEABLE, pdpt_pfn);
 
     for (size_t pdpti = 0; pdpti <= end_off.pdpti; ++pdpti) {
       size_t pd_pfn = pmm::allocPFN();
-      uint64_t *pd = (uint64_t *)(pd_pfn*PAGE_SIZE + VIRTUAL_OFFSET);
+      uint64_t *pd = (uint64_t *)(pd_pfn*PAGE_SIZE + (size_t)&LS_Virt);
       memset(pd, 0, PAGE_SIZE);
       pdpt[pdpti] = setPFN(PRESENT|WRITEABLE, pd_pfn);
 
@@ -241,6 +248,7 @@ void AddressSpace::initUCIdentityMapping() {
   dbg::panic_assert(max_addr <= 1024ULL*1024ULL*1024ULL*1024ULL, "physical address space is over 1TB\n");
   static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);
   size_t pfn = 0;
+
 
   for (size_t pml4i = start_off.pml4i; pml4i < end_off.pml4i; ++pml4i) {
     size_t pdpt_pfn = pmm::allocPFN();
