@@ -390,6 +390,7 @@ void core_boot(uint64_t id) {
   initAPIC();
 
   dbg::printf("{d}", id);
+
   atomic_inc(cores_up);
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::launch();

@@ -92,7 +92,7 @@ extern "C"
   pci::deviceDetection();
   irq::launchCores();
   pml4[0] = 0;
-  *(uint32_t*)3 = 4;
+  pdpt[0] = 0;
 
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
