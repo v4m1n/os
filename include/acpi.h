@@ -92,3 +92,24 @@ struct MADTLAPICEntry {
 } __attribute__((packed));
 
 static_assert(sizeof(MADTLAPICEntry) == 5);
+struct MADTIOAPICEntry {
+  uint8_t type_;
+  uint8_t length_;
+  uint8_t ioapic_id_;
+  uint8_t reserved_;
+  uint32_t address_;
+  uint32_t irq_base_;
+} __attribute__((packed));
+
+static_assert(sizeof(MADTIOAPICEntry) == 12);
+
+struct MADTIOAPICSourceEntry {
+  uint8_t type_;
+  uint8_t length_;
+  uint8_t bus_src_;
+  uint8_t irq_src_;
+  uint32_t irq_;
+  uint16_t flags_;
+} __attribute__((packed));
+
+static_assert(sizeof(MADTIOAPICSourceEntry) == 10);

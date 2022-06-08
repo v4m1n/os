@@ -60,6 +60,54 @@ namespace irq {
   
   static_assert(sizeof(APIC) == 0x400);
 
+  struct IOAPIC {
+    union RedirectionEntry
+    {
+      struct
+      {
+        uint64_t vector       : 8;
+        uint64_t delvMode     : 3;
+        uint64_t destMode     : 1;
+        uint64_t delvStatus   : 1;
+        uint64_t pinPolarity  : 1;
+        uint64_t remoteIRR    : 1;
+        uint64_t triggerMode  : 1;
+        uint64_t mask         : 1;
+        uint64_t reserved     : 39;
+        uint64_t destination  : 8;
+      };
+      struct
+      {
+        uint32_t low;
+        uint32_t high;
+      };
+    };
+    volatile uint32_t *addr_;
+    IOAPIC(uint32_t *addr) : addr_(addr) {}
+
+    uint32_t read(unsigned char regOff) {
+      addr_[0] = regOff;
+      return addr_[4];
+    }
+
+    void write(unsigned char regOff, uint32_t data) {
+      addr_[0] = regOff;
+      addr_[4] = data;
+    }
+
+
+    RedirectionEntry readEntry(uint8_t nr) {
+      RedirectionEntry entry;
+      entry.low = read(0x10+nr*2);
+      entry.high = read(0x10+nr*2+1);
+      return entry;
+    }
+    void writeEntry(uint8_t nr, RedirectionEntry entry) {
+      write(0x10+nr*2, entry.low);
+      write(0x10+nr*2+1, entry.high);
+    }
+  };
+
 }
 struct ArchCPU {
   constexpr ArchCPU() = default;

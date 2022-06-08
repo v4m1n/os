@@ -99,6 +99,7 @@ extern "C"
 void irq_handler_128(thrd::registers *regs) {
   dbg::printf("syscall with parameters: \n");
   thrd::registerDump(*regs);
+  ++regs->r8;
 }
 extern "C"
 void irq_handler_254() {
@@ -330,6 +331,20 @@ void parseRSDT() {
           dbg::printf("  LAPIC: {}\n", curr->apic_id_);
           cpus_[curr->apic_id_/8] |= 1U<<(curr->apic_id_%8);
           ++num_cpus;
+        }
+        break;
+      case 1:
+        {
+          auto curr = reinterpret_cast<MADTIOAPICEntry *>(apic_s + i);
+          dbg::printf("  IOAPIC: {}\n", curr->ioapic_id_);
+          dbg::printf("    addr {}\n", curr->address_);
+          dbg::printf("    base {}\n", curr->irq_base_);
+        }
+        break;
+      case 2:
+        {
+          auto curr = reinterpret_cast<MADTIOAPICSourceEntry *>(apic_s + i);
+          dbg::printf("  IOAPIC IRQ: {}\n", curr->irq_src_);
         }
         break;
       default:

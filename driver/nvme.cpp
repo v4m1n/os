@@ -34,12 +34,15 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   admin_sub_queue_ = vmm::identUCAddress<AdminSubmission *>(bar_->admin_sub_queue_);
   admin_comp_queue_ = vmm::identUCAddress<AdminCompletion *>(bar_->admin_comp_queue_);
 
-  bar_->controller_conf_ |= 1;
+
   bar_->admin_queue_attr_ = 64|(64<<16);
+  bar_->controller_conf_ |= 1;
 
   while(atomic_fetch(bar_->controller_status_)&1) asm volatile("pause" ::: "memory");
   dbg::printf("nvme device ready\n");
+  dbg::printf("nvme stride {}\n", stride_);
 
+  //doorbells_[2] = stride_;
   admin_c_head_ = 0;
   admin_s_tail_ = 0;
 

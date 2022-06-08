@@ -96,13 +96,13 @@ extern "C"
   irq::remapDisablePIC();
   irq::initAPIC();
   irq::parseRSDT();
-  //pci::deviceDetection();
+  pci::deviceDetection();
   irq::launchCores();
   pml4[0] = 0;
   pdpt[0] = 0;
 
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
-  sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
+  //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 4));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 5));
