@@ -38,8 +38,8 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   admin_comp_queue_ = vmm::identUCAddress<AdminCompletion *>(bar_->admin_comp_queue_);
 
 
-  bar_->admin_queue_attr_ = (31)|((31)<<16);
-  bar_->controller_conf_ = 0b111<<4;
+  bar_->admin_queue_attr_ = (63)|((63)<<16);
+  bar_->controller_conf_ = 0<<4;
   bar_->controller_conf_ |= 6 << 16;
   bar_->controller_conf_ |= 4 << 20;
   bar_->controller_conf_ |= 1;
@@ -53,14 +53,15 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   admin_s_tail_ = 0;
 
   AdminSubmission sub;
-  sub.command_ = 6;
+  sub.command_ = 1;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  sub.cdw10_ = 2;
+  sub.cdw10_ = 0;
   volatile auto x = admin_comp_queue_;
   dbg::printf("{d}\n", x->phase_tag_);
   sendAdminCommand(sub);
   while(!x->phase_tag_);
   dbg::printf("{d}\n", x->phase_tag_);
+  dbg::dumpPage(vmm::identAddress<uint8_t *>(sub.data_ptr1_));
   while(1);
 }
 

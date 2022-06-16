@@ -3,6 +3,7 @@
 #include "stddef.h"
 #include "asm.h"
 #include "sync.h"
+#include "pmm.h"
 
 namespace dbg {
 
@@ -30,8 +31,8 @@ namespace dbg {
   template<typename T>
   void printhex(T arg) {
     static_assert(sizeof(T) <= 8);
-    putchar('0');
-    putchar('x');
+    //putchar('0');
+    //putchar('x');
     for (size_t i = sizeof(T)*2; i; --i) {
       char x = (arg>>((i-1)*4))&0xf;
       if (x >= 10) {
@@ -123,5 +124,23 @@ namespace dbg {
     if (!cond) {
       panic(str, args...);
     }
+  }
+  template<typename T>
+  void dumpPage(const T *page) {
+
+    constexpr size_t BYTES_PER_LINE = 16ULL;
+    static_assert(sizeof(T) <= BYTES_PER_LINE);
+    const size_t line_size = BYTES_PER_LINE / sizeof(T);
+    const size_t lines = PAGE_SIZE/BYTES_PER_LINE;
+
+    lock_guard lck(lock);
+    for (size_t i = 0; i < lines; ++i) {
+      printfu("{x}:", static_cast<uint16_t>(i*line_size));
+      for (size_t j = 0; j < line_size; ++j) {
+        printfu(" {x}", page[i*line_size+j]);
+      }
+      putchar('\n');
+    }
+
   }
 }
