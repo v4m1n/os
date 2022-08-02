@@ -1,5 +1,6 @@
 #pragma once
 #include "stdint.h"
+#include "utility.h"
 
 class NVMe {
 
@@ -19,7 +20,7 @@ class NVMe {
 
   static_assert(sizeof(Bar0) == 0x38, "NVMeBar0 is not the correct size");
 
-  struct AdminSubmission {
+  struct Submission {
     uint32_t command_;
     uint32_t namespace_;
     uint32_t cdw2_;
@@ -35,9 +36,9 @@ class NVMe {
     uint32_t cdw15_;
   };
 
-  static_assert(sizeof(AdminSubmission) == 64, "AdminSubmission is not the correct size");
+  static_assert(sizeof(Submission) == 64, "AdminSubmission is not the correct size");
 
-  struct AdminCompletion {
+  struct Completion {
     uint32_t cdw0_;
     uint32_t cdw1_;
     uint16_t sq_head_ptr_;
@@ -47,7 +48,19 @@ class NVMe {
     uint16_t status_field_ : 15;
   };
 
-  static_assert(sizeof(AdminCompletion) == 16, "AdminCompletion is not the correct size");
+  static_assert(sizeof(Completion) == 16, "AdminCompletion is not the correct size");
+  struct Queue {
+    Submission *sub_;
+    Completion *comp_;
+    uint16_t *doorbell_;
+    uint32_t size_ = 0;
+    uint32_t c_head_ = 0;
+    uint32_t s_tail_ = 0;
+    bool sendCommand(Submission sub);
+    pair<bool, Completion> popResult();
+
+
+  };
 
   uint8_t bus_;
   uint8_t dev_;
@@ -56,18 +69,18 @@ class NVMe {
   uint64_t max_page_size_;
   uint64_t stride_;
   uint64_t timeout_; //ms
-  uint32_t admin_c_head_;
-  uint32_t admin_s_tail_;
   uint64_t bar_phys_;
   Bar0 *bar_;
   uint16_t *doorbells_;
 
-  AdminSubmission *admin_sub_queue_;
-  AdminCompletion *admin_comp_queue_;
+  Queue admin_queue_;
+
+
+  
 
 public:
   NVMe(uint8_t bus, uint8_t dev);
 
-  void sendAdminCommand(AdminSubmission sub);
+  void sendAdminCommand(Submission sub);
 };
 

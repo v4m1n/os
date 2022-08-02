@@ -34,8 +34,10 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   bar_->admin_sub_queue_ = pmm::allocZeroPFN()*PAGE_SIZE;
   bar_->admin_comp_queue_ = pmm::allocZeroPFN()*PAGE_SIZE;
 
-  admin_sub_queue_ = vmm::identUCAddress<AdminSubmission *>(bar_->admin_sub_queue_);
-  admin_comp_queue_ = vmm::identUCAddress<AdminCompletion *>(bar_->admin_comp_queue_);
+  admin_queue_.sub_ = vmm::identUCAddress<Submission *>(bar_->admin_sub_queue_);
+  admin_queue_.comp_ = vmm::identUCAddress<Completion *>(bar_->admin_comp_queue_);
+  admin_queue_.doorbell_ = doorbells_;
+  admin_queue_.size_ = 64;
 
 
   bar_->admin_queue_attr_ = (63)|((63)<<16);
@@ -48,26 +50,39 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   dbg::printf("nvme device ready\n");
   dbg::printf("nvme stride {}\n", stride_);
 
-  //doorbells_[2] = stride_;
-  admin_c_head_ = 0;
-  admin_s_tail_ = 0;
 
-  AdminSubmission sub;
+  Submission sub;
   sub.command_ = 1;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
   sub.cdw10_ = 0;
-  volatile auto x = admin_comp_queue_;
-  dbg::printf("{d}\n", x->phase_tag_);
-  sendAdminCommand(sub);
-  while(!x->phase_tag_);
-  dbg::printf("{d}\n", x->phase_tag_);
-  dbg::dumpPage(vmm::identAddress<uint8_t *>(sub.data_ptr1_));
-  while(1);
+  admin_queue_.sendCommand(sub);
+  while(!admin_queue_.popResult().first);
+  
+
+
+  dbg::panic("done\n");
+}
+
+void createIOQueue() {
+
+}
+
+bool NVMe::Queue::sendCommand(Submission sub) {
+  if (((s_tail_ + 1)%size_) == c_head_) return false;
+  sub_[s_tail_] = sub;
+  s_tail_ = (s_tail_ + 1)%size_;
+  *doorbell_ = s_tail_;
+  return true;
+}
+pair<bool, NVMe::Completion> NVMe::Queue::popResult() {
+  if(comp_[c_head_].phase_tag_ == 0) return {false, {}};
+  auto ret = comp_[c_head_];
+  comp_[c_head_].phase_tag_ = 0;
+  c_head_ = (c_head_ + 1)%size_;
+  *(doorbell_+1) = c_head_;
+  return {true, ret};
 }
 
 
-void NVMe::sendAdminCommand(AdminSubmission sub) {
-  admin_sub_queue_[admin_s_tail_] = sub;
-  admin_s_tail_ = (admin_s_tail_ + 1)%64;
-  doorbells_[0] = admin_s_tail_; 
-}
+
+
