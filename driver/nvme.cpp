@@ -50,15 +50,45 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   dbg::printf("nvme device ready\n");
   dbg::printf("nvme stride {}\n", stride_);
 
+  Queue io_queue;
+  io_queue.size_ = 64;
+  io_queue.doorbell_ = doorbells_+4;
 
   Submission sub;
+  sub.command_ = 5;
+  sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
+  io_queue.comp_ = vmm::identUCAddress<Completion *>(sub.data_ptr1_);
+  sub.cdw10_ = (63<<16)|1;
+  sub.cdw11_ = 1;
+  admin_queue_.sendCommand(sub);
+  pair<bool, NVMe::Completion> tmp;
+  while(!(tmp = admin_queue_.popResult()).first);
+  dbg::panic_assert(tmp.second.status_field_ == 0, "io completion queue create error\n");
+  
   sub.command_ = 1;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  sub.cdw10_ = 0;
+  io_queue.sub_ = vmm::identUCAddress<Submission *>(sub.data_ptr1_);
+  sub.cdw10_ = (63<<16)|1;
+  sub.cdw11_ = (1<<16)|1;
   admin_queue_.sendCommand(sub);
-  while(!admin_queue_.popResult().first);
-  
+  while(!(tmp = admin_queue_.popResult()).first);
+  dbg::panic_assert(tmp.second.status_field_ == 0, "io submission queue create error\n");
 
+
+  sub.command_ = 2;
+  sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
+  vmm::identUCAddress<uint64_t *>(sub.data_ptr1_)[0] = pmm::allocZeroPFN()*PAGE_SIZE;
+  sub.data_ptr2_ = 0;
+  sub.metadata_ptr_ = pmm::allocZeroPFN()*PAGE_SIZE;
+  sub.cdw10_ = 0x10000; //LBA
+  sub.cdw11_ = 0; //LBA
+  sub.cdw12_ = 0; //size
+  sub.cdw13_ = 0;
+  sub.cdw14_ = 0;
+  sub.cdw15_ = 0;
+  io_queue.sendCommand(sub);
+  while(!(tmp = io_queue.popResult()).first);
+  dbg::panic_assert(tmp.second.status_field_ == 0, "io read error {}\n", tmp.second.status_field_);
 
   dbg::panic("done\n");
 }
