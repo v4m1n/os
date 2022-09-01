@@ -55,7 +55,7 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   io_queue.doorbell_ = doorbells_+4;
 
   Submission sub;
-  sub.command_ = 5;
+  sub.command_ = CRE_IO_COM;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
   io_queue.comp_ = vmm::identUCAddress<Completion *>(sub.data_ptr1_);
   sub.cdw10_ = (63<<16)|1;
@@ -65,7 +65,7 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   while(!(tmp = admin_queue_.popResult()).first);
   dbg::panic_assert(tmp.second.status_field_ == 0, "io completion queue create error\n");
   
-  sub.command_ = 1;
+  sub.command_ = CRE_IO_SUB;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
   io_queue.sub_ = vmm::identUCAddress<Submission *>(sub.data_ptr1_);
   sub.cdw10_ = (63<<16)|1;
@@ -74,6 +74,14 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   while(!(tmp = admin_queue_.popResult()).first);
   dbg::panic_assert(tmp.second.status_field_ == 0, "io submission queue create error\n");
 
+  sub.command_ = IDENT;
+  sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
+  sub.cdw10_ = 1;
+  admin_queue_.sendCommand(sub);
+  while(!(tmp = admin_queue_.popResult()).first);
+  dbg::panic_assert(tmp.second.status_field_ == 0, "identify error\n");
+
+  dbg::dumpPage(vmm::identUCAddress<uint64_t *>(sub.data_ptr1_));
 
   sub.command_ = 2;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;

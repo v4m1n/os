@@ -3,6 +3,20 @@
 #include "utility.h"
 
 class NVMe {
+private:
+  struct Completion;
+  struct Submission;
+
+    
+
+  
+
+public:
+  NVMe(uint8_t bus, uint8_t dev);
+
+  void sendAdminCommand(Submission sub);
+
+private:
 
   struct Bar0 {
     uint64_t capabilities_;
@@ -75,12 +89,21 @@ class NVMe {
 
   Queue admin_queue_;
 
+  enum AdminCommands {
+    DEL_IO_SUB = 0,
+    CRE_IO_SUB,
+    GET_LOG,
+    DEL_IO_COM = 4,
+    CRE_IO_COM,
+    IDENT,
+    ABORT = 8,
+    SET_FEAT,
+    GET_FEAT,
+    ASYNC_REQ = 0xc,
+    FIRMWARE_ACTIVE = 0x10,
+    FIRMWARE_DOWNLOAD = 0x11
+  };
 
-  
 
-public:
-  NVMe(uint8_t bus, uint8_t dev);
-
-  void sendAdminCommand(Submission sub);
 };
 
