@@ -98,6 +98,10 @@ namespace dbg {
           printdec(arg);
           return printfu(++str, args...);
         }
+        if constexpr (is_same_type<T, char>::value) if (x == 'c') {
+          putchar(arg);
+          return printfu(++str, args...);
+        }
         putchar('{');
         putchar(x);
       }
@@ -126,18 +130,24 @@ namespace dbg {
     }
   }
   template<typename T>
-  void dumpPage(const T *page) {
+  void dumpPage(const T *page, const size_t page_size=PAGE_SIZE) {
 
     constexpr size_t BYTES_PER_LINE = 16ULL;
     static_assert(sizeof(T) <= BYTES_PER_LINE);
     const size_t line_size = BYTES_PER_LINE / sizeof(T);
-    const size_t lines = PAGE_SIZE/BYTES_PER_LINE;
+    const size_t lines = page_size/BYTES_PER_LINE;
 
     lock_guard lck(lock);
     for (size_t i = 0; i < lines; ++i) {
-      printfu("{x}:", static_cast<uint16_t>(i*line_size));
+      printfu("{x}:", static_cast<uint16_t>(i*BYTES_PER_LINE));
       for (size_t j = 0; j < line_size; ++j) {
         printfu(" {x}", page[i*line_size+j]);
+      }
+      printfu(" | ");
+      auto *tmp = reinterpret_cast<const uint8_t *>(&page[i*line_size]);
+      for (size_t j = 0; j < BYTES_PER_LINE; ++j) {
+        char out = (tmp[j] <= 126 && tmp[j] >= 0x20) ? tmp[j] : '.'; 
+        putchar(out);
       }
       putchar('\n');
     }

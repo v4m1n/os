@@ -91,7 +91,7 @@ void initPageManager() {
 
 size_t allocZeroPFN(size_t size) {
   size_t pfn = allocPFN(size);
-  memset(vmm::pageAddress<void *>(pfn), 0, PAGE_SIZE);
+  memset(vmm::pageAddress<void *>(pfn), 0, size);
   return pfn;
 }
 

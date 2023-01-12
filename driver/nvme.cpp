@@ -76,28 +76,36 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
 
   sub.command_ = IDENT;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  sub.cdw10_ = 1;
+  sub.cdw10_ = 2;
+  sub.namespace_ = 0;
   admin_queue_.sendCommand(sub);
   while(!(tmp = admin_queue_.popResult()).first);
   dbg::panic_assert(tmp.second.status_field_ == 0, "identify error\n");
 
   dbg::dumpPage(vmm::identUCAddress<uint64_t *>(sub.data_ptr1_));
+  dbg::printf(vmm::identUCAddress<char *>(sub.data_ptr1_));
+
 
   sub.command_ = 2;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
   vmm::identUCAddress<uint64_t *>(sub.data_ptr1_)[0] = pmm::allocZeroPFN()*PAGE_SIZE;
   sub.data_ptr2_ = 0;
-  sub.metadata_ptr_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  sub.cdw10_ = 0x10000; //LBA
+  sub.metadata_ptr_ = pmm::allocZeroPFN(PAGE_SIZE*16)*PAGE_SIZE;
+  sub.namespace_ = 1;
+  sub.cdw10_ = 0x0; //LBA
   sub.cdw11_ = 0; //LBA
-  sub.cdw12_ = 0; //size
+  sub.cdw12_ = 8-1; //size
   sub.cdw13_ = 0;
   sub.cdw14_ = 0;
   sub.cdw15_ = 0;
-  io_queue.sendCommand(sub);
-  while(!(tmp = io_queue.popResult()).first);
-  dbg::panic_assert(tmp.second.status_field_ == 0, "io read error {}\n", tmp.second.status_field_);
 
+  for (size_t i = 0; i < 1000; ++i) { 
+    io_queue.sendCommand(sub);
+    while(!(tmp = io_queue.popResult()).first);
+    dbg::panic_assert(tmp.second.status_field_ == 0, "io read error {}\n", tmp.second.status_field_);
+    dbg::dumpPage(vmm::identUCAddress<uint8_t *>(sub.data_ptr1_), PAGE_SIZE);
+    sub.cdw10_ += PAGE_SIZE;
+  }
   dbg::panic("done\n");
 }
 
