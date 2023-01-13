@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 dev=$(udisksctl loop-setup --file disk.img | cut -d  ' ' -f 5)
 mnt=$(udisksctl mount -b "${dev::-1}p1" | cut -d ' ' -f 4)
 cp kernel.elf "${mnt}/boot/"

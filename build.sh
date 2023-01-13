@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 name="" #$(echo $RANDOM | md5sum | head -c 16)
 src=$(pwd)
 folder="/tmp/os${name}"
