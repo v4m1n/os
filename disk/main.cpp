@@ -212,6 +212,7 @@ struct Ext4Partition : Partition{
 
 
   SuperBlock super_block_;
+  uint64_t block_size_;
 
   Ext4Partition(Disk *disk, uint64_t start_lba);
   int parseSuperBlock() override;
@@ -291,6 +292,7 @@ int Ext4Partition::parseSuperBlock() {
   printf("inode count: %x\n", super_block_.s_inodes_count);
   printf("block count: %x\n", super_block_.s_blocks_count_lo);
   printf("block size: %llx\n", 1ULL<<(10+super_block_.s_log_block_size));
+  block_size_ = 1ULL<<(10+super_block_.s_log_block_size);
 
   return 0;
 }
