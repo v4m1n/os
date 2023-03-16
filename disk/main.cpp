@@ -210,6 +210,41 @@ struct Ext4Partition : Partition{
 
   static_assert(sizeof(SuperBlock) == 0x400, "SuperBlock size incorrect");
 
+  struct GroupDescriptor {
+    enum FLAGS {
+      EXT4_BG_INODE_UNINIT = 1,
+      EXT4_BG_BLOCK_UNINIT = 2,
+      EXT4_BG_INODE_ZEROED = 4
+    };
+    uint32_t bg_block_bitmap_lo;
+    uint32_t bg_inode_bitmap_lo;
+    uint32_t bg_inode_table_lo;
+    uint16_t bg_free_blocks_count_lo;
+    uint16_t bg_free_inodes_count_lo;
+    uint16_t bg_used_dirs_count_lo;
+    uint16_t bg_flags;
+    uint32_t bg_exclude_bitmap_lo;
+    uint16_t bg_block_bitmap_csum_lo;
+    uint16_t bg_inode_bitmap_csum_lo;
+    uint16_t bg_itable_unused_lo;
+    uint16_t bg_checksum;
+
+    uint32_t bg_block_bitmap_hi;
+    uint32_t bg_inode_bitmap_hi;
+    uint32_t bg_inode_table_hi;
+    uint16_t bg_free_blocks_count_hi;
+    uint16_t bg_free_inodes_count_hi;
+    uint16_t bg_used_dirs_count_hi;
+    uint16_t bg_itable_unused_hi;
+    uint32_t bg_exclude_bitmap_hi;
+    uint16_t bg_block_bitmap_csum_hi;
+    uint16_t bg_inode_bitmap_csum_hi;
+    uint32_t bg_reserved;
+  };
+
+  static_assert(sizeof(GroupDescriptor) == 0x40, "GroupDescriptor size incorrect");
+
+
 
   SuperBlock super_block_;
   uint64_t block_size_;
@@ -287,10 +322,19 @@ int Ext4Partition::parseSuperBlock() {
     printf("invalid ext4 magic\n");
     return -1;
   }
+  if (super_block_.s_rev_level != 1) {
+    printf("wrong ext4 revision\n");
+    return -1;
+  }
+  if (super_block_.s_block_group_nr != 0) {
+    printf("block groups not supported\n");
+    return -1;
+  }
   memcpy(uuid_, &super_block_.s_uuid, 16);
   printf("volume label: %16s\n", super_block_.s_volume_name);
   printf("inode count: %x\n", super_block_.s_inodes_count);
   printf("block count: %x\n", super_block_.s_blocks_count_lo);
+  printf("block group count: %x\n", super_block_.s_block_group_nr);
   printf("block size: %llx\n", 1ULL<<(10+super_block_.s_log_block_size));
   block_size_ = 1ULL<<(10+super_block_.s_log_block_size);
 
