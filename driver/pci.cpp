@@ -3,6 +3,7 @@
 #include "asm.h"
 #include "debug.h"
 #include "nvme.h"
+#include "ahci.h"
 
 namespace pci {
 
@@ -19,8 +20,12 @@ namespace pci {
         auto sc = readPCIConfig<uint8_t>(bus, dev, 0, 0xa);
         auto prog_if = readPCIConfig<uint8_t>(bus, dev, 0, 9);
         if (cc == 1 && sc == 8 && prog_if == 2) {
-          dbg::printf("    NVME\n");
+          dbg::printf("    NVMe\n");
           NVMe drive(bus, dev);
+        }
+        if (cc == 1 && sc == 6) {
+          dbg::printf("    AHCI\n");
+          AHCI drive(bus, dev);
         }
 
       }
