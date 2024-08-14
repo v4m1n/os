@@ -15,6 +15,8 @@
 #include "pci.h"
 #include "asm.h"
 
+#include <stdint.h>
+
 [[maybe_unused]] const struct __attribute__((packed))
 {
     unsigned int magic = 0xe85250d6;
