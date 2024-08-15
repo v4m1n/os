@@ -43,6 +43,7 @@ struct IntDes {
   uint32_t reserved2_ = 0;
 } __attribute__((packed));
 
+
 static_assert(sizeof(IntDes) == 16);
 
 extern "C" void asm_exception_handler_0();
@@ -344,7 +345,7 @@ void parseRSDT() {
       case 2:
         {
           auto curr = reinterpret_cast<MADTIOAPICSourceEntry *>(apic_s + i);
-          dbg::printf("  IOAPIC IRQ: {}\n", curr->irq_src_);
+          dbg::printf("  IOAPIC IRQ: {} --> {}\n", curr->irq_src_, curr->irq_);
         }
         break;
       default:

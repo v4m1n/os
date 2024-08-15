@@ -19,6 +19,9 @@ public:
     }
   }
 
+  array() : size_(0), data_(0) {
+  }
+
   T& at(size_t i) {
     dbg::panic_assert(i < size_, "array access out of bounds\n");
     return data_[i];
@@ -28,6 +31,28 @@ public:
   }
   size_t size() {
     return size_;
+  }
+  void resize(size_t new_size) {
+    auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*size));
+
+    for (size_t i = 0; i < size_ && i < new_size; ++i) {
+      new (&new_data[i]) T(move(data[i]));
+    }
+
+    if (size_ < new_size) {
+      for (size_t i = size_; i < new_size; ++i) {
+        new (&new_data[i]) T();
+      }
+    }
+    else {
+      for (size_t i = new_size; i < size_; ++i) {
+        data_[i].~T();
+      }
+    }
+
+    kmm::kfree(data_);
+    size_ = new_size;
+    data_ = new_data;
   }
   bool empty() {
     return !size_;
