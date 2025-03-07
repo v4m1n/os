@@ -32,10 +32,10 @@ inline void invlpg(uint64_t addr) {
   asm volatile("invlpg [%0]" :: "r"(addr) : "memory");
 }
 inline void outb(uint16_t port, uint8_t value) {
-  asm volatile("outb dx, al" :: "d"(port), "a"(value) : "memory");
+  asm volatile("out dx, al" :: "d"(port), "a"(value) : "memory");
 }
 inline void outw(uint16_t port, uint16_t value) {
-  asm volatile("outw dx, ax" :: "d"(port), "a"(value) : "memory");
+  asm volatile("out dx, ax" :: "d"(port), "a"(value) : "memory");
 }
 inline void out(uint16_t port, uint32_t value) {
   asm volatile("out dx, eax" :: "d"(port), "a"(value) : "memory");
@@ -47,7 +47,7 @@ inline uint8_t inb(uint16_t port) {
 }
 inline uint16_t inw(uint16_t port) {
   uint16_t value;
-  asm volatile("inw ax, dx" : "=a"(value) : "d"(port) : "memory");
+  asm volatile("in ax, dx" : "=a"(value) : "d"(port) : "memory");
   return value;
 }
 inline uint32_t in(uint16_t port) {

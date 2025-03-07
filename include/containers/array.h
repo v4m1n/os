@@ -33,7 +33,7 @@ public:
     return size_;
   }
   void resize(size_t new_size) {
-    auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*size));
+    auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*new_size));
 
     for (size_t i = 0; i < size_ && i < new_size; ++i) {
       new (&new_data[i]) T(move(data[i]));
@@ -54,6 +54,22 @@ public:
     size_ = new_size;
     data_ = new_data;
   }
+  template <typename ...Args>
+  void emplace_back(Args... args) {
+    auto new_size = size_+1;
+    auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*new_size));
+
+    for (size_t i = 0; i < size_; ++i) {
+      new (&new_data[i]) T(move(data[i]));
+    }
+
+    new (&new_data[size_]) T(args...);
+
+    kmm::kfree(data_);
+    size_ = new_size;
+    data_ = new_data;
+  }
+
   bool empty() {
     return !size_;
   }

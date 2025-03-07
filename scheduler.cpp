@@ -87,12 +87,12 @@ asm(R"(
 .global test_code_start
 .global test_code_end
 test_code_start:
-movq %rax, %rdi
-movq %rbx, 1
+mov %rax, %rdi
+mov %rbx, 1
 int 0x80
-movq %rcx, 0xdeadbeef
+mov %rcx, 0xdeadbeef
 int 0x80
-movq %rdx, 0x41414141414141
+mov %rdx, 0x41414141414141
 int 0x80
 
 
