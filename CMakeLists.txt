@@ -38,7 +38,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include/containers)
 include_directories(${PROJECT_SOURCE_DIR}/include/driver)
 
 add_custom_command(OUTPUT disk.img
-  COMMAND gunzip "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.gz" -c > ${CMAKE_CURRENT_BINARY_DIR}/disk.img
+  COMMAND xz -d -c "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.xz" > ${CMAKE_CURRENT_BINARY_DIR}/disk.img
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   COMMENT "Unpacking disk..."
 )
