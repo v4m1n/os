@@ -6,6 +6,101 @@
 #include <vector>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include <algorithm>
+
+struct ExtExtentHeader {
+  uint16_t eh_magic;      // 0xF30A
+  uint16_t eh_entries;    // Number of valid entries
+  uint16_t eh_max;        // Max number of entries
+  uint16_t eh_depth;      // Depth of tree (0 for leaves, >0 for internal nodes)
+  uint32_t eh_generation; // Generation of the tree
+} __attribute__((packed));
+
+struct ExtExtent {
+  uint32_t ee_block;      // First logical block number
+  uint16_t ee_len;        // Number of blocks covered
+  uint16_t ee_start_hi;   // Upper 16-bits of physical block address
+  uint32_t ee_start_lo;   // Lower 32-bits of physical block address
+} __attribute__((packed));
+
+struct ExtExtentIdx {
+  uint32_t ei_block;      // Index covers logical blocks from this value upwards
+  uint32_t ei_leaf_lo;    // Lower 32-bits of physical block of next level
+  uint16_t ei_leaf_hi;    // Upper 16-bits of physical block of next level
+  uint16_t ei_unused;
+} __attribute__((packed));
+
+struct Inode {
+  uint16_t i_mode;        // File mode
+  uint16_t i_uid;         // Low 16 bits of Owner Uid
+  uint32_t i_size_lo;     // Size in bytes
+  uint32_t i_atime;       // Access time
+  uint32_t i_ctime;       // Creation time
+  uint32_t i_mtime;       // Modification time
+  uint32_t i_dtime;       // Deletion Time
+  uint16_t i_gid;         // Low 16 bits of Group Id
+  uint16_t i_links_count; // Links count
+  uint32_t i_blocks_lo;   // Blocks count
+  uint32_t i_flags;       // File flags
+  union {
+      struct {
+          uint32_t l_i_version;
+      } linux1;
+      struct {
+          uint32_t  h_i_translator;
+      } hurd1;
+      struct {
+          uint32_t  m_i_reserved1;
+      } masix1;
+  } osd1;                 // OS dependent 1
+  uint32_t i_block[15];   // Pointers to blocks / Extent tree
+  uint32_t i_generation;  // File version (for NFS)
+  uint32_t i_file_acl_lo; // File ACL
+  uint32_t i_size_high;   // Size high
+  uint32_t i_obso_faddr;  // Obsoleted fragment address
+  union {
+      struct {
+          uint16_t l_i_blocks_high; // were l_i_reserved1
+          uint16_t l_i_file_acl_high;
+          uint16_t l_i_uid_high;    // these 2 fields
+          uint16_t l_i_gid_high;    // were reserved2[2]
+          uint16_t l_i_checksum_lo; // crc32c(uuid+inum+inode) LE
+          uint16_t l_i_reserved;
+      } linux2;
+      struct {
+          uint16_t h_i_reserved1;
+          uint16_t h_i_mode_high;
+          uint16_t h_i_uid_high;
+          uint16_t h_i_gid_high;
+          uint32_t h_i_author;
+      } hurd2;
+      struct {
+          uint16_t m_i_reserved2[2];
+          uint16_t m_i_pad1;
+          uint16_t m_i_uid_high;    // these 2 fields
+          uint16_t m_i_gid_high;    // were reserved2[2]
+          uint32_t m_i_reserved3;
+      } masix2;
+  } osd2;                 // OS dependent 2
+  uint16_t i_extra_isize;
+  uint16_t i_checksum_hi; // crc32c(uuid+inum+inode) BE
+  uint32_t i_ctime_extra; // extra Change time (nsec << 2 | epoch)
+  uint32_t i_mtime_extra; // extra Modification time (nsec << 2 | epoch)
+  uint32_t i_atime_extra; // extra Access time (nsec << 2 | epoch)
+  uint32_t i_crtime;      // File Creation time
+  uint32_t i_crtime_extra;// extra FileCreation time (nsec << 2 | epoch)
+  uint32_t i_version_hi;  // high 32 bits for 64-bit version
+  uint32_t i_projid;      // Project ID
+} __attribute__((packed));
+
+struct ExtDirEntry {
+  uint32_t inode;
+  uint16_t rec_len;
+  uint8_t name_len;
+  uint8_t file_type;
+  char name[];
+} __attribute__((packed));
 
 uint32_t crctable[256] = {
  0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
@@ -73,8 +168,26 @@ uint32_t crctable[256] = {
  0x79B737BAL, 0x8BDCB4B9L, 0x988C474DL, 0x6AE7C44EL,
  0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L
 };
+struct CRC32 {
+  uint32_t value_ = 0xffffffffULL;
+  template <typename T>
+  void push(T in) {
+    static_assert(!std::is_pointer<T>::value);
+  	uint8_t *buf = (uint8_t *)&in;
+    size_t len = sizeof(T);
+  	while (len-- > 0) {
+  		value_ = (value_>>8) ^ crctable[(value_ ^ (*buf++)) & 0xFF];
+  	}
+  }
+  void push(uint8_t *buf, size_t len) {
+  	while (len-- > 0) {
+  		value_ = (value_>>8) ^ crctable[(value_ ^ (*buf++)) & 0xFF];
+  	}
+  }
+  uint32_t get() {return value_^0xffffffffU;}
+};
 
-uint32_t crc32c(uint8_t *buf, int len, uint32_t init = 0xffffffffULL)
+uint32_t crc32c(uint8_t *buf, size_t len, uint32_t init = 0xffffffffULL)
 {
 	uint32_t crc = init;
 	while (len-- > 0) {
@@ -89,7 +202,7 @@ struct Partition {
   Disk *disk_;
   uint64_t start_lba_;
   uint8_t uuid_[16];
-  virtual int parseSuperBlock() = 0;
+  virtual int parseSuperblock() = 0;
   Partition(Disk *disk, uint64_t start_lba) : disk_(disk), start_lba_(start_lba){}
   
 };
@@ -246,11 +359,22 @@ struct Ext4Partition : Partition{
 
 
 
-  SuperBlock super_block_;
+  SuperBlock superblock_;
   uint64_t block_size_;
+  uint64_t gdt_offset_;
+  uint64_t num_block_groups_;
+  std::vector<GroupDescriptor> group_descriptors_;
 
   Ext4Partition(Disk *disk, uint64_t start_lba);
-  int parseSuperBlock() override;
+  int parseSuperblock() override;
+  int read_bytes(char *buffer, uint64_t part_offset, uint64_t length);
+  int read_inode(uint32_t ino, Inode &inode);
+  uint64_t map_block_in_extent(const ExtExtentHeader *hdr, uint32_t lblock);
+  uint64_t map_inode_block(const Inode &inode, uint32_t lblock);
+  int read_inode_data(const Inode &inode, uint64_t offset, uint64_t length, char *buffer);
+  int find_in_directory(const Inode &dir_inode, const std::string &name, uint32_t &out_ino);
+  int resolve_path(const std::string &path, uint32_t &out_ino);
+  int list_directory(uint32_t ino);
 };
 
 struct Disk {
@@ -300,7 +424,7 @@ int Disk::parseMBR() {
 
 
     auto part = new Ext4Partition(this, x.partition_start_lba_);
-    if (part->parseSuperBlock() != 0) {
+    if (part->parseSuperblock() != 0) {
       delete part;
       continue;
     }
@@ -316,28 +440,286 @@ int Disk::parseMBR() {
 Ext4Partition::Ext4Partition(Disk *disk, uint64_t start_lba) : Partition(disk, start_lba) {
 
 }
-int Ext4Partition::parseSuperBlock() {
-  if (disk_->read((char*)&super_block_, start_lba_+1024/disk_->block_size, 1024)) return -1;
-  if (super_block_.s_magic != 0xEF53) {
+int Ext4Partition::parseSuperblock() {
+  if (disk_->read((char*)&superblock_, start_lba_+1024/disk_->block_size, 1024)) return -1;
+  if (superblock_.s_magic != 0xEF53) {
     printf("invalid ext4 magic\n");
     return -1;
   }
-  if (super_block_.s_rev_level != 1) {
+  if (superblock_.s_rev_level != 1) {
     printf("wrong ext4 revision\n");
     return -1;
   }
-  if (super_block_.s_block_group_nr != 0) {
+  if (superblock_.s_block_group_nr != 0) {
     printf("block groups not supported\n");
     return -1;
   }
-  memcpy(uuid_, &super_block_.s_uuid, 16);
-  printf("volume label: %16s\n", super_block_.s_volume_name);
-  printf("inode count: %x\n", super_block_.s_inodes_count);
-  printf("block count: %x\n", super_block_.s_blocks_count_lo);
-  printf("block group count: %x\n", super_block_.s_block_group_nr);
-  printf("block size: %llx\n", 1ULL<<(10+super_block_.s_log_block_size));
-  block_size_ = 1ULL<<(10+super_block_.s_log_block_size);
+  if (superblock_.s_checksum != ~crc32c((uint8_t *)&superblock_, sizeof(superblock_)-4)) {
+    printf("incorrect superblock checksum\n");
+    return -1;
+  }
+  memcpy(uuid_, &superblock_.s_uuid, 16);
+  printf("volume label: %16s\n", superblock_.s_volume_name);
+  printf("inode count: %x\n", superblock_.s_inodes_count);
+  printf("block count: %x\n", superblock_.s_blocks_count_lo);
+  printf("block group count: %x\n", superblock_.s_blocks_per_group);
+  printf("block size: %llx\n", 1ULL<<(10+superblock_.s_log_block_size));
+  block_size_ = 1ULL<<(10+superblock_.s_log_block_size);
+  gdt_offset_ = block_size_ == 1024 ? block_size_*2 : block_size_;
+  num_block_groups_ = superblock_.s_blocks_count_lo/superblock_.s_blocks_per_group;
+  printf("%lu\n", num_block_groups_);
+  uint8_t block[disk_->block_size];
+  size_t gd_per_block = disk_->block_size/sizeof(GroupDescriptor);
+  group_descriptors_.clear();
+  for (size_t i = 0; num_block_groups_ > i; ++i) {
+    if ((i%gd_per_block) == 0)
+      disk_->read((char *)block, start_lba_+(gdt_offset_+(i*sizeof(GroupDescriptor)))/disk_->block_size, disk_->block_size);
+    GroupDescriptor &gd = ((GroupDescriptor *)block)[i%gd_per_block];
 
+    size_t checksum = gd.bg_checksum;
+    gd.bg_checksum = 0;
+    CRC32 crc;
+    crc.push(superblock_.s_uuid, 16);
+    crc.push((uint32_t)i);
+    crc.push((uint8_t *)&gd, sizeof(gd));
+
+    printf("%x\n", (uint64_t)gd.bg_free_blocks_count_hi | gd.bg_free_blocks_count_lo);
+    printf("%x\n", (uint64_t)gd.bg_block_bitmap_hi | gd.bg_block_bitmap_lo);
+    assert(checksum == (crc.value_&0xffffULL));
+
+    gd.bg_checksum = checksum;
+    group_descriptors_.push_back(gd);
+  }
+
+  return 0;
+}
+
+int Ext4Partition::read_bytes(char *buffer, uint64_t part_offset, uint64_t length) {
+  uint64_t global_offset = start_lba_ * disk_->block_size + part_offset;
+  uint64_t start_lba = global_offset / disk_->block_size;
+  uint64_t byte_offset_in_block = global_offset % disk_->block_size;
+  
+  uint64_t end_offset = global_offset + length;
+  uint64_t end_block = (end_offset + disk_->block_size - 1) / disk_->block_size;
+  uint64_t num_blocks = end_block - start_lba;
+  
+  std::vector<char> temp(num_blocks * disk_->block_size);
+  if (disk_->read(temp.data(), start_lba, num_blocks * disk_->block_size) != 0) {
+    return -1;
+  }
+  memcpy(buffer, temp.data() + byte_offset_in_block, length);
+  return 0;
+}
+
+int Ext4Partition::read_inode(uint32_t ino, Inode &inode) {
+  uint32_t bg = (ino - 1) / superblock_.s_inodes_per_group;
+  uint32_t index = (ino - 1) % superblock_.s_inodes_per_group;
+  if (bg >= group_descriptors_.size()) return -1;
+  
+  const auto &gd = group_descriptors_[bg];
+  uint64_t inode_table_block = ((uint64_t)gd.bg_inode_table_hi << 32) | gd.bg_inode_table_lo;
+  uint64_t offset = index * superblock_.s_inode_size;
+  uint64_t part_offset = inode_table_block * block_size_ + offset;
+  
+  size_t to_read = std::min((size_t)superblock_.s_inode_size, sizeof(Inode));
+  memset(&inode, 0, sizeof(Inode));
+  return read_bytes((char *)&inode, part_offset, to_read);
+}
+
+uint64_t Ext4Partition::map_block_in_extent(const ExtExtentHeader *hdr, uint32_t lblock) {
+  if (hdr->eh_magic != 0xF30A) {
+    printf("Invalid extent magic: %x\n", hdr->eh_magic);
+    return 0;
+  }
+  
+  uint16_t depth = hdr->eh_depth;
+  if (depth == 0) {
+    const ExtExtent *ext = (const ExtExtent *)(hdr + 1);
+    for (uint16_t i = 0; i < hdr->eh_entries; ++i) {
+      uint32_t start_lblock = ext[i].ee_block;
+      uint32_t len = ext[i].ee_len;
+      if (len > 32768) len -= 32768; // Uninitialized extent
+      
+      if (lblock >= start_lblock && lblock < start_lblock + len) {
+        uint64_t start_phys = ((uint64_t)ext[i].ee_start_hi << 32) | ext[i].ee_start_lo;
+        return start_phys + (lblock - start_lblock);
+      }
+    }
+    return 0;
+  } else {
+    const ExtExtentIdx *idx = (const ExtExtentIdx *)(hdr + 1);
+    int target_idx = -1;
+    for (uint16_t i = 0; i < hdr->eh_entries; ++i) {
+      if (idx[i].ei_block <= lblock) {
+        target_idx = i;
+      } else {
+        break;
+      }
+    }
+    if (target_idx == -1) return 0;
+    
+    uint64_t next_level_block = ((uint64_t)idx[target_idx].ei_leaf_hi << 32) | idx[target_idx].ei_leaf_lo;
+    std::vector<char> block_buf(block_size_);
+    if (read_bytes(block_buf.data(), next_level_block * block_size_, block_size_) != 0) {
+      return 0;
+    }
+    
+    return map_block_in_extent((const ExtExtentHeader *)block_buf.data(), lblock);
+  }
+}
+
+uint64_t Ext4Partition::map_inode_block(const Inode &inode, uint32_t lblock) {
+  if (inode.i_flags & 0x80000) {
+    const ExtExtentHeader *hdr = (const ExtExtentHeader *)inode.i_block;
+    return map_block_in_extent(hdr, lblock);
+  } else {
+    printf("Non-extent inode mapping not fully supported (flags: %x)\n", inode.i_flags);
+    if (lblock < 12) {
+      return inode.i_block[lblock];
+    }
+    return 0;
+  }
+}
+
+int Ext4Partition::read_inode_data(const Inode &inode, uint64_t offset, uint64_t length, char *buffer) {
+  uint64_t file_size = ((uint64_t)inode.i_size_high << 32) | inode.i_size_lo;
+  if (offset >= file_size) return 0;
+  if (offset + length > file_size) {
+    length = file_size - offset;
+  }
+  
+  uint64_t bytes_read = 0;
+  while (bytes_read < length) {
+    uint64_t cur_offset = offset + bytes_read;
+    uint32_t lblock = cur_offset / block_size_;
+    uint32_t offset_in_block = cur_offset % block_size_;
+    uint32_t to_read = std::min((uint64_t)block_size_ - offset_in_block, length - bytes_read);
+    
+    uint64_t pblock = map_inode_block(inode, lblock);
+    if (pblock == 0) {
+      memset(buffer + bytes_read, 0, to_read);
+    } else {
+      std::vector<char> block_buf(block_size_);
+      if (read_bytes(block_buf.data(), pblock * block_size_, block_size_) != 0) {
+        return -1;
+      }
+      memcpy(buffer + bytes_read, block_buf.data() + offset_in_block, to_read);
+    }
+    bytes_read += to_read;
+  }
+  return bytes_read;
+}
+
+int Ext4Partition::find_in_directory(const Inode &dir_inode, const std::string &name, uint32_t &out_ino) {
+  if ((dir_inode.i_mode & 0xF000) != 0x4000) {
+    return -1;
+  }
+  
+  uint64_t file_size = ((uint64_t)dir_inode.i_size_high << 32) | dir_inode.i_size_lo;
+  std::vector<char> block_buf(block_size_);
+  
+  uint64_t num_blocks = (file_size + block_size_ - 1) / block_size_;
+  for (uint32_t lblock = 0; lblock < num_blocks; ++lblock) {
+    uint64_t pblock = map_inode_block(dir_inode, lblock);
+    if (pblock == 0) continue;
+    
+    if (read_bytes(block_buf.data(), pblock * block_size_, block_size_) != 0) {
+      return -1;
+    }
+    
+    uint32_t offset = 0;
+    while (offset < block_size_) {
+      const ExtDirEntry *entry = (const ExtDirEntry *)(block_buf.data() + offset);
+      if (entry->rec_len < 8 || offset + entry->rec_len > block_size_) {
+        break;
+      }
+      
+      if (entry->inode != 0 && entry->name_len > 0) {
+        std::string entry_name(entry->name, entry->name_len);
+        if (entry_name == name) {
+          out_ino = entry->inode;
+          return 0;
+        }
+      }
+      
+      offset += entry->rec_len;
+    }
+  }
+  return -1;
+}
+
+int Ext4Partition::resolve_path(const std::string &path, uint32_t &out_ino) {
+  uint32_t cur_ino = 2;
+  
+  std::vector<std::string> parts;
+  std::string current;
+  for (char c : path) {
+    if (c == '/') {
+      if (!current.empty()) {
+        parts.push_back(current);
+        current.clear();
+      }
+    } else {
+      current.push_back(c);
+    }
+  }
+  if (!current.empty()) {
+    parts.push_back(current);
+  }
+  
+  for (const auto &part : parts) {
+    Inode dir_inode;
+    if (read_inode(cur_ino, dir_inode) != 0) {
+      return -1;
+    }
+    uint32_t next_ino;
+    if (find_in_directory(dir_inode, part, next_ino) != 0) {
+      return -1;
+    }
+    cur_ino = next_ino;
+  }
+  
+  out_ino = cur_ino;
+  return 0;
+}
+
+int Ext4Partition::list_directory(uint32_t ino) {
+  Inode dir_inode;
+  if (read_inode(ino, dir_inode) != 0) {
+    return -1;
+  }
+  if ((dir_inode.i_mode & 0xF000) != 0x4000) {
+    printf("Not a directory!\n");
+    return -1;
+  }
+  
+  uint64_t file_size = ((uint64_t)dir_inode.i_size_high << 32) | dir_inode.i_size_lo;
+  std::vector<char> block_buf(block_size_);
+  
+  uint64_t num_blocks = (file_size + block_size_ - 1) / block_size_;
+  for (uint32_t lblock = 0; lblock < num_blocks; ++lblock) {
+    uint64_t pblock = map_inode_block(dir_inode, lblock);
+    if (pblock == 0) continue;
+    
+    if (read_bytes(block_buf.data(), pblock * block_size_, block_size_) != 0) {
+      return -1;
+    }
+    
+    uint32_t offset = 0;
+    while (offset < block_size_) {
+      const ExtDirEntry *entry = (const ExtDirEntry *)(block_buf.data() + offset);
+      if (entry->rec_len < 8 || offset + entry->rec_len > block_size_) {
+        break;
+      }
+      
+      if (entry->inode != 0 && entry->name_len > 0) {
+        std::string entry_name(entry->name, entry->name_len);
+        printf("  Ino %u: %s (type %d)\n", entry->inode, entry_name.c_str(), entry->file_type);
+      }
+      
+      offset += entry->rec_len;
+    }
+  }
   return 0;
 }
 
@@ -347,4 +729,49 @@ int main() {
   disk.block_size=512;
   assert(disk.fd != -1);
   disk.parseMBR();
+
+  for (auto p : disk.partitions_) {
+    auto part = static_cast<Ext4Partition *>(p);
+    
+    printf("\n--- Reading root directory (/) ---\n");
+    part->list_directory(2);
+    
+    printf("\n--- Resolving /CMakeLists.txt ---\n");
+    uint32_t cmake_ino;
+    if (part->resolve_path("/CMakeLists.txt", cmake_ino) == 0) {
+      printf("Found /CMakeLists.txt at inode %u\n", cmake_ino);
+      Inode cmake_inode;
+      if (part->read_inode(cmake_ino, cmake_inode) == 0) {
+        uint64_t size = ((uint64_t)cmake_inode.i_size_high << 32) | cmake_inode.i_size_lo;
+        printf("File size: %lu bytes\n", size);
+        std::vector<char> file_data(size + 1, 0);
+        part->read_inode_data(cmake_inode, 0, size, file_data.data());
+        printf("--- Content of /CMakeLists.txt ---\n%s\n--------------------------------------\n", file_data.data());
+      }
+    } else {
+      printf("Failed to resolve /CMakeLists.txt\n");
+    }
+
+    printf("\n--- Reading directory /driver ---\n");
+    uint32_t driver_ino;
+    if (part->resolve_path("/driver", driver_ino) == 0) {
+      part->list_directory(driver_ino);
+    }
+
+    printf("\n--- Resolving /driver/ahci.cpp ---\n");
+    uint32_t ahci_ino;
+    if (part->resolve_path("/driver/ahci.cpp", ahci_ino) == 0) {
+      printf("Found /driver/ahci.cpp at inode %u\n", ahci_ino);
+      Inode ahci_inode;
+      if (part->read_inode(ahci_ino, ahci_inode) == 0) {
+        uint64_t size = ((uint64_t)ahci_inode.i_size_high << 32) | ahci_inode.i_size_lo;
+        printf("File size: %lu bytes\n", size);
+        std::vector<char> file_data(size + 1, 0);
+        part->read_inode_data(ahci_inode, 0, size, file_data.data());
+        printf("--- Content of /driver/ahci.cpp (first 300 bytes) ---\n%.300s...\n--------------------------------------\n", file_data.data());
+      }
+    } else {
+      printf("Failed to resolve /driver/ahci.cpp\n");
+    }
+  }
 }
