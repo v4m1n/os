@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+  set(CMAKE_COLOR_DIAGNOSTICS ON)
+else()
+  add_compile_options(-fdiagnostics-color=always)
+endif()
+
 set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_ASM_COMPILER "g++")
 set(CMAKE_C_COMPILER "gcc")
@@ -22,8 +28,14 @@ FILE(GLOB SSource CONFIGURE_DEPENDS *.S)
 #set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> <FLAGS> -f elf64 -o <OBJECT> <SOURCE>")
 #set(CMAKE_ASM_NASM_LINK_EXECUTABLE "ld <CMAKE_ASM_NASM_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
 #set_source_files_properties(${SSource} PROPERTIES LANGUAGE ASM_NASM)
+option(ENABLE_ANALYZER "Enable GCC static analyzer (-fanalyzer)" ON)
 
-set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -fanalyzer -static")
+set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -static")
+
+if(ENABLE_ANALYZER)
+  set(CMAKE_KERNEL_FLAGS "${CMAKE_KERNEL_FLAGS} -fanalyzer")
+endif()
+
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CMAKE_KERNEL_FLAGS} -nostdinc++ -fno-rtti -fmodules-ts -g -D_GLIBCXX_OS_DEFINES -D__glibcxx_format=1 -D__glibcxx_format_ranges=202207L")
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")

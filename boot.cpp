@@ -163,7 +163,6 @@ extern "C"
   irq::launchCores();
   pml4[0] = 0;
   pdpt[0] = 0;
-
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
