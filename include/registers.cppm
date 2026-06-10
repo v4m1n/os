@@ -1,8 +1,10 @@
 module;
-#include "stdint.h"
+#include <cstdint>
 
 export module registers;
 import gdt;
+
+export extern "C++" struct Thread;
 
 export namespace thrd {
   struct registers {

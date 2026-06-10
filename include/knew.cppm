@@ -1,13 +1,13 @@
 module;
-#include "stddef.h"
+#include <cstddef>
 
 export module knew;
 
 export extern "C++" {
-  void *operator new(size_t, void *p);
-  void *operator new[](size_t, void *p);
-  void  operator delete  (void *, void *);
-  void  operator delete[](void *, void *);
+  constexpr void *operator new(size_t, void *p) noexcept { return p; }
+  constexpr void *operator new[](size_t, void *p) noexcept { return p; }
+  constexpr void  operator delete  (void *, void *) noexcept {}
+  constexpr void  operator delete[](void *, void *) noexcept {}
 
   void *operator new(size_t size);
   void *operator new[](size_t size);

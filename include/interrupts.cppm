@@ -1,6 +1,6 @@
 module;
-#include "stdint.h"
-#include "stddef.h"
+#include <cstdint>
+#include <cstddef>
 
 export module interrupts;
 import gdt;

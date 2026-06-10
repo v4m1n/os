@@ -1,5 +1,5 @@
 module;
-#include "stddef.h"
+#include <cstddef>
 
 export module array;
 import kmm;
