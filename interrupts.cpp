@@ -1,17 +1,18 @@
+module;
 #include "stdint.h"
-#include "debug.h"
-#include "utility.h"
-#include "gdt.h"
+#include "stddef.h"
 #include "asm.h"
-#include "vmm.h"
-#include "pmm.h"
 #include "mpt.h"
 #include "acpi.h"
-#include "string.h"
-#include "interrupts.h"
-#include "scheduler.h"
 #include "array.h"
 #include "msr.h"
+
+module interrupts;
+import scheduler;
+import string;
+import pmm;
+import sync;
+import registers;
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
@@ -19,11 +20,12 @@
 #define IA32_APIC_BASE_MSR_BSP 0x100 // Processor is a BSP
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
 
-extern uint8_t boot_stack[PAGE_SIZE*2];
+extern "C" uint8_t boot_stack[8192];
+extern "C" {
+  size_t core_init_page = -1;
+}
 
-size_t core_init_page = -1;
-
-namespace mboot { extern RSDP *rsdp; }
+extern "C++" namespace mboot { extern RSDP *rsdp; }
 
 struct IntDes {
   IntDes(uint64_t offset, uint16_t segment, 
@@ -117,7 +119,7 @@ void irq_handler_def() {
   dbg::printf("unknown int\n");
 }
 
-extern size_t LS_Virt;
+extern "C" size_t LS_Virt;
 
 
 namespace irq {

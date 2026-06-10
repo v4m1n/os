@@ -1,16 +1,22 @@
-#include "vmm.h"
-#include "pmm.h"
-#include "debug.h"
-#include "string.h"
+module;
+#include "stdint.h"
+#include "stddef.h"
 #include "asm.h"
 
+module vmm;
+import string;
+import pmm;
+import debug;
+
+extern "C" {
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pml4[512];
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pdpt[512];
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pd[512];
+}
 
-extern size_t max_addr;
-extern size_t core_init_page;
-extern size_t LS_Virt;
+extern "C" size_t max_addr;
+extern "C" size_t core_init_page;
+extern "C" size_t LS_Virt;
 
 
 namespace vmm {

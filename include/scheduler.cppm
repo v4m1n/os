@@ -1,11 +1,26 @@
-#pragma once
-#include "Thread.h"
+module;
+#include "stdint.h"
 #include "stddef.h"
 #include "array.h"
-#include "interrupts.h"
-#include "sync.h"
 
-struct CPU {
+export module scheduler;
+import vmm;
+import registers;
+import gdt;
+import sync;
+import interrupts;
+
+export extern "C++" struct Thread {
+  uint64_t stack_[1024];
+  bool sleeping_;
+  uint64_t current_stack_;
+  Thread *next_;
+  Thread *prev_;
+  thrd::ArchThrd arch_;
+  vmm::AddressSpace *address_space_ = nullptr;
+};
+
+export struct CPU {
   constexpr CPU() = default;
   struct CPU *cpu_ = this;
   uint64_t scratch_;
@@ -18,9 +33,9 @@ struct CPU {
   Thread *list_ = nullptr;
 };
 
-extern array<CPU> cpus;
+export extern array<CPU> cpus;
 
-namespace sched {
+export namespace sched {
 
   void schedule();
 

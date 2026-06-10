@@ -1,14 +1,17 @@
-#pragma once
+module;
 #include "stdint.h"
-#include "pmm.h"
+#include "stddef.h"
 
+export module vmm;
+import pmm;
 
-extern uint64_t pml4[512];
-extern uint64_t pdpt[512];
-extern uint64_t pd[512];
+extern "C" {
+export extern uint64_t pml4[512];
+export extern uint64_t pdpt[512];
+export extern uint64_t pd[512];
+}
 
-namespace vmm {
-
+export namespace vmm {
 
 class AddressSpace {
   public:
@@ -58,7 +61,6 @@ class AddressSpace {
     uint64_t pml4_;
 
   private:
-
     struct Offsets {
       const size_t pti;
       const size_t pdi;
@@ -71,8 +73,8 @@ class AddressSpace {
                                       pdpti((vpn >> 18) & 0x1ff), 
                                       pml4i((vpn >> 27) & 0x1ff) {}
     };
-
 };
+
 template<typename T>
 inline T pageAddress(size_t pfn) {
   return reinterpret_cast<T>(AddressSpace::IDENTITY_MAPPING | pfn*PAGE_SIZE);
@@ -88,6 +90,6 @@ inline T pageUCAddress(size_t pfn) {
 template<typename T>
 inline T identUCAddress(size_t addr) {
   return reinterpret_cast<T>(AddressSpace::UC_IDENTITY_MAPPING | addr);
-
 }
+
 }

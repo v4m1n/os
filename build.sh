@@ -4,7 +4,8 @@ src=$(pwd)
 folder="/tmp/os${name}"
 mkdir "${folder}"
 cd "${folder}"
-cmake "${src}"
-make -j 8
+cmake -G Ninja "${src}"
+ninja
+
 echo "build directory at: ${folder}"
 thunar "${folder}"

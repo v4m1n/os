@@ -1,11 +1,14 @@
-#include "scheduler.h"
-#include "interrupts.h"
-#include "debug.h"
-#include "Thread.h"
-#include "string.h"
-#include "kmm.h"
-#include "registers.h"
+module;
 #include "asm.h"
+#include "array.h"
+
+module scheduler;
+import string;
+import kmm;
+import debug;
+import registers;
+import interrupts;
+import pmm;
 
 array<CPU> cpus(0);
 

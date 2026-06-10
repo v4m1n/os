@@ -1,25 +1,21 @@
 #include "stdint.h"
-#include "debug.h"
 #include "multiboot.h"
 #include "new.h"
-#include "pmm.h"
-#include "string.h"
-#include "vmm.h"
-#include "gdt.h"
-#include "kmm.h"
-#include "interrupts.h"
-#include "registers.h"
-#include "scheduler.h"
-#include "Thread.h"
-#include "sync.h"
-#include "pci.h"
 #include "asm.h"
-#include "driver/block.h"
-#include "vfs.h"
-#include "driver/fat32.h"
-
-
-#include <stdint.h>
+import scheduler;
+import block;
+import vfs;
+import fat32;
+import string;
+import gdt;
+import kmm;
+import sync;
+import pmm;
+import debug;
+import vmm;
+import registers;
+import interrupts;
+import pci;
 
 [[maybe_unused]] const volatile struct __attribute__((packed))
 {
@@ -39,17 +35,19 @@
 } multiboot  __attribute__ ((section (".multiboot")));
 
 
+extern "C" {
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]]
 uint8_t boot_stack[PAGE_SIZE*2];
-
 
 extern size_t LS_Virt;
 extern uint8_t *bss_end[];
 extern uint8_t *bss_start[];
 extern size_t kernel_start;
 extern size_t kernel_end;
+}
 
 
+extern "C" {
 GDTE gdt[7] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
                 .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},
@@ -61,6 +59,7 @@ GDTE gdt[7] = {{},
                 .present=1, .limit2=0xfU, .zero=0, .lmode=0, .size=1, .granularity=1, .base3=0},
                {.limit1=sizeof(TSS)-1, .base1=0, .base2=0, .accessed=1, .rw=0, .direction=0, .executable=1, .descriptor=0, .priv=0,
                 .present=1, .limit2=0, .zero=0, .lmode=0, .size=1, .granularity=0, .base3=0}};
+}
 
 uint64_t x;
 spinlock lock;
@@ -84,6 +83,8 @@ extern "C"
   mbootheader += (size_t)&LS_Virt;
   dbg::printf("booting...\n");
   dbg::printf("clearing bss...\n");
+
+
   memset(bss_start, 0, bss_end-bss_start);
 
   dbg::printf("multiboot2 header at {}\n", (uint64_t *)mbootheader);

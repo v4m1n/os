@@ -1,8 +1,10 @@
-#pragma once
+module;
 #include "stdint.h"
 #include "stddef.h"
 
-namespace kmm {
+export module kmm;
+
+export namespace kmm {
   void testslab();
   void *kmalloc(size_t size);
   void kfree(void *ptr);

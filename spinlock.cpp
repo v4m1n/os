@@ -1,7 +1,8 @@
+module;
 #include "asm.h"
-#include "sync.h"
-#include "debug.h"
-#include "interrupts.h"
+
+module sync;
+import debug;
 
 
 void spinlock::lock() {

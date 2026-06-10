@@ -1,9 +1,16 @@
-#include "pci.h"
-#include "nvme.h"
-#include "debug.h"
-#include "vmm.h"
-#include "interrupts.h"
-#include "string.h"
+module;
+#include "stdint.h"
+#include "stddef.h"
+#include "asm.h"
+
+module nvme;
+import string;
+import debug;
+import vmm;
+import pmm;
+import pci;
+import interrupts;
+
 
 NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   pci::writePCIConfig<uint16_t>(bus, dev, 0, 0x4, (1U<<4) | (1U<<2) | (1U<<1) | 1U);

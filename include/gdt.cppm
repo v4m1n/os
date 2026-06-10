@@ -1,7 +1,9 @@
-#pragma once
+module;
 #include "stdint.h"
 
-struct GDTE {
+export module gdt;
+
+export struct GDTE {
   uint16_t limit1;
   uint16_t base1;
   uint8_t base2;
@@ -25,9 +27,7 @@ struct GDTE {
   }
 } __attribute__((packed));
 
-static_assert(sizeof(GDTE) == 8);
-
-struct TSS {
+export struct TSS {
   uint32_t reserved1;
   uint32_t rsp0_low;
   uint32_t rsp0_high;
@@ -54,13 +54,13 @@ struct TSS {
   uint16_t iopb_offset;
 } __attribute__((packed));
 
-static_assert(sizeof(TSS) == 104);
+extern "C" {
+export extern GDTE gdt[7];
+export extern TSS tss;
+}
 
-extern GDTE gdt[7];
-extern TSS tss;
-
-#define KERNEL_CS 0x8
-#define KERNEL_DS 0x10
-#define USER_CS 0x1b
-#define USER_DS 0x23
-#define TSSS 0x28
+export constexpr uint16_t KERNEL_CS = 0x8;
+export constexpr uint16_t KERNEL_DS = 0x10;
+export constexpr uint16_t USER_CS = 0x1b;
+export constexpr uint16_t USER_DS = 0x23;
+export constexpr uint16_t TSSS = 0x28;

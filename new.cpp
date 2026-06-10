@@ -1,6 +1,7 @@
 #include "new.h"
 #include "stdint.h"
-#include "kmm.h"
+
+import kmm;
 
 void *operator new(size_t, void *p) { return p; }
 void *operator new[](size_t, void *p) { return p; }

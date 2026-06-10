@@ -1,14 +1,17 @@
-#include "pmm.h"
+module;
 #include "stdint.h"
-#include "debug.h"
-#include "string.h"
-#include "vmm.h"
+#include "stddef.h"
 
-extern size_t max_addr;
+module pmm;
+import string;
+import debug;
+import vmm;
 
-extern size_t LS_Virt;
-extern size_t kernel_start;
-extern size_t kernel_end;
+extern "C" size_t max_addr;
+
+extern "C" size_t LS_Virt;
+extern "C" size_t kernel_start;
+extern "C" size_t kernel_end;
 
 namespace pmm {
 MemoryRegion mem_regions[64];

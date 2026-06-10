@@ -1,7 +1,9 @@
-#pragma once
+module;
 #include "stdint.h"
 
-class BlockDevice {
+export module block;
+
+export class BlockDevice {
 public:
   virtual ~BlockDevice() = default;
   virtual int readBlocks(uint64_t lba, uint32_t count, void *buffer) = 0;
@@ -10,7 +12,7 @@ public:
   virtual uint64_t getBlockCount() const = 0;
 };
 
-namespace block {
+export namespace block {
   void registerDevice(BlockDevice *dev);
   BlockDevice *getDevice(uint32_t index);
   uint32_t getDeviceCount();

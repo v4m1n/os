@@ -1,9 +1,11 @@
-#pragma once
+module;
 #include "stdint.h"
-#include "vfs.h"
-#include "driver/block.h"
 
-namespace fat32 {
+export module fat32;
+import vfs;
+import block;
+
+export namespace fat32 {
 
 struct BPB {
   uint8_t  jmp[3];

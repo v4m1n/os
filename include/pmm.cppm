@@ -1,10 +1,12 @@
-#pragma once
+module;
 #include "stdint.h"
 #include "stddef.h"
 
-constexpr size_t PAGE_SIZE = 4096ULL;
+export module pmm;
 
-namespace pmm {
+export constexpr size_t PAGE_SIZE = 4096ULL;
+
+export namespace pmm {
 struct MemoryRegion {
   size_t addr;
   size_t len;

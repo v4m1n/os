@@ -1,8 +1,12 @@
-#include "driver/fat32.h"
-#include "string.h"
-#include "kmm.h"
+module;
+#include "stdint.h"
 #include "new.h"
-#include "debug.h"
+
+module fat32;
+import string;
+import kmm;
+import debug;
+
 
 namespace fat32 {
 

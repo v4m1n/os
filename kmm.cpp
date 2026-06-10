@@ -1,12 +1,14 @@
-#include "kmm.h"
+module;
 #include "stdint.h"
 #include "stddef.h"
-#include "debug.h"
-#include "pmm.h"
-#include "vmm.h"
-#include "string.h"
-#include "sync.h"
 #include "new.h"
+
+module kmm;
+import string;
+import sync;
+import pmm;
+import debug;
+import vmm;
 
 namespace kmm {
   struct MemCache;

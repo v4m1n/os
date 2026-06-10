@@ -1,8 +1,16 @@
-#include "pci.h"
-#include "ahci.h"
-#include "debug.h"
-#include "vmm.h"
-#include "interrupts.h"
+module;
+#include "stdint.h"
+#include "stddef.h"
+#include "asm.h"
+
+module ahci;
+import utility;
+import debug;
+import vmm;
+import pmm;
+import pci;
+import interrupts;
+
 
 AHCI::AHCI(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   uint16_t pcicmd = pci::readPCIConfig<uint16_t>(bus, dev, 0, 0x4);

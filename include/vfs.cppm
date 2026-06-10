@@ -1,7 +1,9 @@
-#pragma once
+module;
 #include "stdint.h"
 
-namespace vfs {
+export module vfs;
+
+export namespace vfs {
 
 enum class NodeType {
   FILE = 1,

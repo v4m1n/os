@@ -1,7 +1,8 @@
+module;
 #include "stdint.h"
 #include "stddef.h"
-#include "debug.h"
-#include "sync.h"
+
+module debug;
 
 namespace dbg {
 

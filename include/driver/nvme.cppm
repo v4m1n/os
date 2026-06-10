@@ -1,16 +1,14 @@
-#pragma once
+module;
 #include "stdint.h"
-#include "utility.h"
-#include "block.h"
 
-class NVMe : public BlockDevice {
+export module nvme;
+import block;
+import utility;
+
+export class NVMe : public BlockDevice {
 private:
   struct Completion;
   struct Submission;
-
-    
-
-  
 
 public:
   NVMe(uint8_t bus, uint8_t dev);
@@ -23,7 +21,6 @@ public:
   uint64_t getBlockCount() const override { return 1048576; } // 512 MB disk.img has 1048576 blocks
 
 private:
-
   struct Bar0 {
     uint64_t capabilities_;
     uint32_t version_;
@@ -78,8 +75,6 @@ private:
     uint32_t s_tail_ = 0;
     bool sendCommand(Submission sub);
     pair<bool, Completion> popResult();
-
-
   };
 
   uint8_t bus_;
@@ -110,7 +105,4 @@ private:
     FIRMWARE_ACTIVE = 0x10,
     FIRMWARE_DOWNLOAD = 0x11
   };
-
-
 };
-

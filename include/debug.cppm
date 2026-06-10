@@ -1,11 +1,13 @@
-#pragma once
+module;
 #include "stdint.h"
 #include "stddef.h"
 #include "asm.h"
-#include "sync.h"
-#include "pmm.h"
 
-namespace dbg {
+export module debug;
+import sync;
+import pmm;
+
+export namespace dbg {
 
   void dump(void *data, size_t size);
 

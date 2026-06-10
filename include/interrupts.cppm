@@ -1,28 +1,24 @@
-#pragma once
-#include "gdt.h"
-#include "vmm.h"
-#include "debug.h"
+module;
+#include "stdint.h"
+#include "stddef.h"
 #include "array.h"
-#include "utility.h"
 
-extern "C" void context_return();
-extern "C" void context_switch(void *dest, void *src);
+export module interrupts;
+import gdt;
+import debug;
+import vmm;
+import utility;
 
-namespace irq {
+export extern "C" void context_return();
+export extern "C" void context_switch(void *dest, void *src);
+
+export namespace irq {
   void initIdt();
   void initAPIC();
   void parseMPT();
   void parseRSDT();
   void remapDisablePIC();
   void launchCores();
-
-  inline bool getIF() {
-    uint64_t flags;
-    asm volatile("pushf\npop %0" :"=r"(flags):: "memory");
-    return flags &0x200;
-  }
-  inline void enableInterrupts() { asm volatile("sti" ::: "memory"); }
-  inline void disableInterrupts() { asm volatile("cli" ::: "memory"); }
 
   struct aligned_uint32 {
     alignas(16) volatile uint32_t data;
@@ -63,54 +59,6 @@ namespace irq {
   
   static_assert(sizeof(APIC) == 0x400);
 
-  //struct IOAPIC {
-  //  union RedirectionEntry
-  //  {
-  //    struct
-  //    {
-  //      uint64_t vector       : 8;
-  //      uint64_t delvMode     : 3;
-  //      uint64_t destMode     : 1;
-  //      uint64_t delvStatus   : 1;
-  //      uint64_t pinPolarity  : 1;
-  //      uint64_t remoteIRR    : 1;
-  //      uint64_t triggerMode  : 1;
-  //      uint64_t mask         : 1;
-  //      uint64_t reserved     : 39;
-  //      uint64_t destination  : 8;
-  //    };
-  //    struct
-  //    {
-  //      uint32_t low;
-  //      uint32_t high;
-  //    };
-  //  };
-  //  volatile uint32_t *addr_;
-  //  IOAPIC(uint32_t *addr) : addr_(addr) {}
-
-  //  uint32_t read(unsigned char regOff) {
-  //    addr_[0] = regOff;
-  //    return addr_[4];
-  //  }
-
-  //  void write(unsigned char regOff, uint32_t data) {
-  //    addr_[0] = regOff;
-  //    addr_[4] = data;
-  //  }
-
-
-  //  RedirectionEntry readEntry(uint8_t nr) {
-  //    RedirectionEntry entry;
-  //    entry.low = read(0x10+nr*2);
-  //    entry.high = read(0x10+nr*2+1);
-  //    return entry;
-  //  }
-  //  void writeEntry(uint8_t nr, RedirectionEntry entry) {
-  //    write(0x10+nr*2, entry.low);
-  //    write(0x10+nr*2+1, entry.high);
-  //  }
-  //};
-
   struct IOAPIC {
     union RedirectionEntry
     {
@@ -137,7 +85,6 @@ namespace irq {
     uint8_t apic_id_;
     array<pair<uint32_t, uint32_t>> remaps_;
 
-  
     void write(uint32_t reg, uint32_t val) {
       *addr_ = reg;
       *(addr_+4) = val;
@@ -152,14 +99,11 @@ namespace irq {
       apic_id_ = ioapicid>> 24 &0xf;
       dbg::printf("IO APIC ID: {}\n", ioapicid);
       dbg::printf("  IO APIC version: {}\n", read(1));
-  
-  
-  
     }
-  
   };
 }
-struct ArchCPU {
+
+export struct ArchCPU {
   constexpr ArchCPU() = default;
   TSS tss;
   uint64_t cr3;

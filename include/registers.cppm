@@ -1,10 +1,10 @@
-#pragma once
+module;
 #include "stdint.h"
-#include "gdt.h"
 
-struct Thread;
+export module registers;
+import gdt;
 
-namespace thrd {
+export namespace thrd {
   struct registers {
     uint64_t gs_base;
     uint64_t fs_base;
@@ -36,12 +36,7 @@ namespace thrd {
     uint64_t gs;
     uint64_t fs;
   };
-
-uint64_t *push(uint64_t *stack, uint64_t value);
-
-registers setupRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1, const uint64_t cs=KERNEL_CS, const uint64_t ds=KERNEL_DS);
-
-uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs);
-
-void registerDump(const registers &regs);
+  registers setupRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1, const uint64_t cs=KERNEL_CS, const uint64_t ds=KERNEL_DS);
+  uint64_t setupTask(::Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs);
+  void registerDump(const registers &regs);
 }

@@ -1,4 +1,9 @@
-#include "string.h"
+module;
+#include "stdint.h"
+#include "stddef.h"
+
+module string;
+
 extern "C" {
 void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *d = (uint8_t *)dest;

@@ -1,11 +1,16 @@
-#include "registers.h"
-#include "interrupts.h"
-#include "gdt.h"
+module;
 #include "stddef.h"
-#include "string.h"
-#include "scheduler.h"
-#include "Thread.h"
 #include "msr.h"
+#include "asm.h"
+#include "new.h"
+
+module registers;
+import scheduler;
+import string;
+import kmm;
+import debug;
+import vmm;
+import interrupts;
 
 namespace thrd {
 

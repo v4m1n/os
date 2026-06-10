@@ -1,8 +1,9 @@
 #pragma once
-#include "kmm.h"
 #include "stddef.h"
 #include "new.h"
-#include "debug.h"
+
+import kmm;
+import debug;
 
 template <typename T>
 class array {

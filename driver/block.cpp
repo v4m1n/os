@@ -1,10 +1,13 @@
-#include "driver/block.h"
-#include "driver/fat32.h"
-#include "vfs.h"
-#include "kmm.h"
+module;
+#include "stdint.h"
 #include "new.h"
-#include "debug.h"
-#include "string.h"
+
+module block;
+import fat32;
+import vfs;
+import string;
+import kmm;
+import debug;
 
 namespace block {
   constexpr uint32_t MAX_DEVICES = 16;

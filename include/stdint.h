@@ -25,3 +25,5 @@ static_assert(sizeof(uint16_t) == 2);
 static_assert(sizeof(uint32_t) == 4);
 static_assert(sizeof(uint64_t) == 8);
 static_assert(sizeof(uintptr_t) == 8);
+
+struct Thread;

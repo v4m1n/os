@@ -1,7 +1,9 @@
-#pragma once
+module;
 #include "stddef.h"
 
-struct spinlock {
+export module sync;
+
+export struct spinlock {
   void lock();
   void unlock();
   bool try_lock();
@@ -16,7 +18,7 @@ private:
   volatile size_t locked_ = 0;
 };
 
-struct spinlock_irq {
+export struct spinlock_irq {
   void lock();
   void unlock();
   bool try_lock();
@@ -31,9 +33,9 @@ private:
   bool if_ = false;
 };
 
-using mutex = spinlock;
+export using mutex = spinlock;
 
-template <typename T>
+export template <typename T>
 class lock_guard {
   bool release_;
   T &lock_;

@@ -1,7 +1,10 @@
-#include "vfs.h"
-#include "string.h"
-#include "kmm.h"
-#include "sync.h"
+module;
+#include "stddef.h"
+
+module vfs;
+import string;
+import kmm;
+import sync;
 
 namespace vfs {
 

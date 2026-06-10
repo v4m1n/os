@@ -94,3 +94,13 @@ inline void hlt() {
 inline void setCR3(size_t val) {
   asm volatile("mov cr3, %0" :: "r"(val) : "memory");
 }
+
+namespace irq {
+  inline bool getIF() {
+    uint64_t flags;
+    asm volatile("pushf\npop %0" :"=r"(flags):: "memory");
+    return flags &0x200;
+  }
+  inline void enableInterrupts() { asm volatile("sti" ::: "memory"); }
+  inline void disableInterrupts() { asm volatile("cli" ::: "memory"); }
+}

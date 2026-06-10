@@ -1,12 +1,14 @@
-#include "pci.h"
+module;
 #include "stdint.h"
 #include "asm.h"
-#include "debug.h"
-#include "nvme.h"
-#include "ahci.h"
-#include "driver/block.h"
-#include "kmm.h"
 #include "new.h"
+
+module pci;
+import nvme;
+import ahci;
+import block;
+import kmm;
+import debug;
 
 namespace pci {
 

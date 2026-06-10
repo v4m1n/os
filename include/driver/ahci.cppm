@@ -1,18 +1,16 @@
-#pragma once
+module;
 #include "stdint.h"
-#include "utility.h"
 
-class AHCI {
-  
+export module ahci;
+import utility;
 
+export class AHCI {
 public:
   AHCI(uint8_t bus, uint8_t dev);
-
 
 private:
   uint8_t bus_;
   uint8_t dev_;
-  
 
   enum FIS_TYPE
   {
@@ -152,22 +150,22 @@ private:
   	uint8_t  i:1;		// Interrupt bit
   	uint8_t  a:1;            // Auto-activate. Specifies if DMA Activate FIS is needed
   
-    uint8_t  rsved[2];       // Reserved
+     uint8_t  rsved[2];       // Reserved
   
   	//DWORD 1&2
-    uint64_t DMAbufferID;    // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
+     uint64_t DMAbufferID;    // DMA Buffer Identifier. Used to Identify DMA buffer in host memory.
   
-    //DWORD 3
-    uint32_t rsvd;           //More reserved
+     //DWORD 3
+     uint32_t rsvd;           //More reserved
   
-    //DWORD 4
-    uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
+     //DWORD 4
+     uint32_t DMAbufOffset;   //Byte offset into buffer. First 2 bits must be 0
   
-    //DWORD 5
-    uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
+     //DWORD 5
+     uint32_t TransferCount;  //Number of bytes to transfer. Bit 0 must be 0
   
-    //DWORD 6
-    uint32_t resvd;          //Reserved
+     //DWORD 6
+     uint32_t resvd;          //Reserved
   } dma;
   };
   struct HBA_PORT
@@ -214,13 +212,11 @@ private:
   	uint8_t  vendor[0x100-0xA0];
   
   	// 0x100 - 0x10FF, Port control registers
-  	HBA_PORT	ports[];	// 1 ~ 32
+  	HBA_PORT	ports[];// 1 ~ 32
   };
 
   volatile HBA_MEM *hba_;
 
   volatile FIS *fis_buffers[32];
   volatile FIS *cmd_buffers[32];
-  
 };
-

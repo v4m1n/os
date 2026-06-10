@@ -1,11 +1,15 @@
 #include "multiboot2.h"
-#include "debug.h"
-#include "string.h"
 #include "stdint.h"
-#include "pmm.h"
+#include "stddef.h"
+
+import string;
+import pmm;
+import debug;
 
 
-size_t max_addr = 0;
+extern "C" {
+  size_t max_addr = 0;
+}
 
 namespace mboot {
 
