@@ -95,6 +95,8 @@ extern "C"
 
 
 
+
+
   //dbg::printf("parsing MPT...\n");
   //irq::parseMPT();
   dbg::printf("init pagemanager...\n");
@@ -102,6 +104,8 @@ extern "C"
   pmm::initPageManager();
   kmm::kmalloc_init();
   
+
+
   dbg::printf("boot stack: {}-{}\n",boot_stack, boot_stack+sizeof(boot_stack));
   dbg::printf("bss end at {}\n", (uint64_t *)bss_end);
 
