@@ -22,7 +22,7 @@ set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_ASM_COMPILER "g++")
 set(CMAKE_C_COMPILER "gcc")
 
-set(CMAKE_KERNEL_FLAGS "-m64 -O3 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -fanalyzer -static")
+set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -fanalyzer -static")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CMAKE_KERNEL_FLAGS} -nostdinc++ -fno-rtti -std=c++26 -g")
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
@@ -43,7 +43,7 @@ add_custom_command(OUTPUT disk.img
 add_custom_target(image
   DEPENDS disk.img
 )
-add_library(OBJS OBJECT disk.img)
+# add_library(OBJS OBJECT disk.img)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/disk/grub.cfg ${CMAKE_CURRENT_BINARY_DIR}/grub.cfg COPYONLY)
 add_custom_command(OUTPUT dsk
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/disk/setup.sh

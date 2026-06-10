@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-[[maybe_unused]] const struct __attribute__((packed))
+[[maybe_unused]] const volatile struct __attribute__((packed))
 {
     unsigned int magic = 0xe85250d6;
     unsigned int flags = 0;
@@ -86,7 +86,9 @@ extern "C"
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
-  irq::parseMPT();
+  //dbg::printf("parsing MPT...\n");
+  //irq::parseMPT();
+  dbg::printf("init pagemanager...\n");
   vmm::AddressSpace::kernel_page_table_ = ((uint64_t)pml4)-(size_t)&LS_Virt;
   pmm::initPageManager();
   kmm::kmalloc_init();

@@ -17,6 +17,6 @@ void initPageManager();
 [[nodiscard]] size_t allocZeroPFN(size_t size=PAGE_SIZE);
 void freePFN(size_t pfn, size_t size=PAGE_SIZE);
 
-extern MemoryRegion mem_regions[16];
+extern MemoryRegion mem_regions[64];
 
 }

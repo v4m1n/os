@@ -115,7 +115,7 @@ test_code_end:
   auto code_page = pmm::allocZeroPFN();
   auto stack_page = pmm::allocZeroPFN();
   auto code = vmm::pageAddress<void *>(code_page);
-  memcpy(code, &test_code_start, (&test_code_end-&test_code_start));
+  memcpy(code, &test_code_start, ((uint64_t)&test_code_end-(uint64_t)&test_code_start));
   thread->address_space_->mapPFN(CODE_START/PAGE_SIZE, code_page, 0, 0);
   thread->address_space_->mapPFN(STACK_START/PAGE_SIZE, stack_page, 1, 0);
 

@@ -24,13 +24,17 @@ class AddressSpace {
     constexpr static size_t EXECUTION_DISABLED = (1ULL<<63);
     constexpr static uint64_t IDENTITY_MAPPING = 0xffff'8000'0000'0000ULL;
     constexpr static uint64_t UC_IDENTITY_MAPPING = 0xffff'a000'0000'0000ULL;
+    constexpr static uint64_t IO_MAPPING = 0xffff'c000'0000'0000ULL;
 
     static void initIdentityMapping();
     static void initUCIdentityMapping();
+    static void initIORemap();
 
     static bool mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable=1, const uint64_t nx=0);
 
     static void setKernelCaching(const size_t vpn, const uint64_t cache);
+
+    static void *ioremap(const uint64_t pfn, const bool huge_page=false);
 
     static inline size_t setPFN(const uint64_t entry, const size_t pfn) {
       return (entry&~0xffffffffff000ULL)|(pfn<<12);
@@ -52,6 +56,7 @@ class AddressSpace {
     uint64_t unmapPFN(const uint64_t vpn);
 
     uint64_t pml4_;
+
   private:
 
     struct Offsets {

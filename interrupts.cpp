@@ -23,6 +23,8 @@ extern uint8_t boot_stack[PAGE_SIZE*2];
 
 size_t core_init_page = -1;
 
+namespace mboot { extern RSDP *rsdp; }
+
 struct IntDes {
   IntDes(uint64_t offset, uint16_t segment, 
          uint8_t type, uint8_t dpl, uint8_t present) :
@@ -190,7 +192,7 @@ void initAPIC() {
   dbg::printf("APIC base {}\n", base);
   auto pfn = base/PAGE_SIZE;
 
-  apic = vmm::pageUCAddress<APIC *>(pfn);
+  apic = (APIC *)vmm::AddressSpace::ioremap(pfn);
   dbg::printf("LAPIC ID: {}\n", apic->id);
   dbg::printf("LAPIC version: {}\n", apic->version);
 
@@ -220,7 +222,7 @@ void *searchMPT() {
 void parseMPT() {
 
   MP *mp = reinterpret_cast<MP *>(searchMPT());
-  dbg::panic_assert(mp->address, "mp config table does not exist\n");
+  dbg::panic_assert(mp && mp->address, "mp config table does not exist\n");
   MPHead *mp_head = reinterpret_cast<MPHead *>(mp->address+((size_t)&LS_Virt));
   dbg::panic_assert(mp_head->signature_ == 0x504d4350U, "MP config signature incorrect\n");
   size_t cur = mp->address+sizeof(MPHead)+((size_t)&LS_Virt);
@@ -281,16 +283,17 @@ RSDP *searchRSDP() {
   }
   return nullptr;
 }
+
 void parseRSDT() {
-  auto rsdp = searchRSDP();
-  dbg::panic_assert(rsdp, "RSDP not found\n");
+  if (!mboot::rsdp) mboot::rsdp = searchRSDP();
+  dbg::panic_assert(mboot::rsdp, "RSDP not found\n");
 
   MADT *apic = nullptr;
 
-  uint64_t phys_addr = rsdp->revision_ == 0 ? rsdp->rsdt_address_ : rsdp->xsdt_address_;
+  uint64_t phys_addr = mboot::rsdp->revision_ == 0 ? mboot::rsdp->rsdt_address_ : mboot::rsdp->xsdt_address_;
   dbg::printf("RSDT: {}\n", phys_addr);
 
-  if (rsdp->revision_ == 0) {
+  if (mboot::rsdp->revision_ == 0) {
     auto rsdt = vmm::identAddress<RSDT *>(phys_addr);
     dbg::printf("ACPI description headers:\n");
     for (size_t i = 0; i < (rsdt->length_-sizeof(RSDT))/4; ++i) {
@@ -483,8 +486,8 @@ void launchCores() {
   auto x = vmm::pageAddress<uint8_t *>(core_init_page);
   auto count = reinterpret_cast<volatile uint64_t *>(x+1024);
   memset(x, 0, PAGE_SIZE);
-  dbg::panic_assert(&core_start_end-&core_start < 1024, "boot up code too large\n");
-  memcpy(x, &core_start, &core_start_end-&core_start);
+  dbg::panic_assert(reinterpret_cast<uintptr_t>(&core_start_end)-reinterpret_cast<uintptr_t>(&core_start) < 1024, "boot up code too large\n");
+  memcpy(x, &core_start, reinterpret_cast<uintptr_t>(&core_start_end)-reinterpret_cast<uintptr_t>(&core_start));
   *count = 1;
 
   struct ldt {

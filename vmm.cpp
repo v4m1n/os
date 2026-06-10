@@ -168,6 +168,7 @@ void AddressSpace::setKernelCaching(const size_t vpn, const uint64_t cache) {
 }
 
 void AddressSpace::initIdentityMapping() {
+  dbg::printf("initializing identity mapping...\n");
   constinit static bool called = false;
   dbg::panic_assert(!called, "initIdentityMapping has already been called\n");
   called = true;
@@ -232,6 +233,64 @@ void AddressSpace::initIdentityMapping() {
       }
     }
   }
+}
+void *AddressSpace::ioremap(const uint64_t pfn, const bool huge_page) {
+  constexpr size_t start = IO_MAPPING/PAGE_SIZE;
+  constexpr Offsets start_off{start};
+  static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);
+
+  dbg::panic_assert(!huge_page || !(pfn&0x1ffULL), "pfn not correctly alligned\n");
+
+
+  uint64_t *pdpt = pageAddress<size_t *>(getPFN(pml4[start_off.pml4i]));
+
+  for (size_t pdpti = 0; pdpti < 512; ++pdpti) {
+    if ((pdpt[pdpti] & PRESENT) == 0) {
+      size_t pd_pfn = pmm::allocZeroPFN();
+      pdpt[pdpti] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pd_pfn);
+    }
+    uint64_t *pd = pageAddress<size_t *>(getPFN(pdpt[pdpti]));
+
+    for (size_t pdi = 0; pdi < 512; ++pdi) {
+      if ((pd[pdi] & PRESENT) && ((pd[pdi] & HUGE_PAGE) || huge_page)) continue;
+
+      if (huge_page && !(pd[pdi] & PRESENT)) {
+        pd[pdi] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED|HUGE_PAGE, pfn);
+        return (void *)(IO_MAPPING | (pdpti << (12+9+9)) | pdi << (12+9));
+      }
+      if ((pd[pdi] & PRESENT) == 0) {
+        size_t pt_pfn = pmm::allocZeroPFN();
+        pd[pdi] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pt_pfn);
+      }
+      uint64_t *pt = pageAddress<size_t *>(getPFN(pd[pdi]));
+      
+      for (size_t pti = 0; pti < 512; ++pti) {
+        if ((pt[pti] & PRESENT) == 0) {
+          pt[pti] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pfn);
+          return (void *)(IO_MAPPING | (pdpti << (12+9+9)) | pdi << (12+9) | (pti << 12));
+        }
+      }
+    }
+  }
+
+  dbg::panic("io space full\n");
+  return 0;
+}
+void AddressSpace::initIORemap() {
+  constinit static bool called = false;
+  dbg::panic_assert(!called, "initIORemap has already been called\n");
+
+  dbg::printf("initializing IO mapping...\n");
+
+  constexpr size_t start = IO_MAPPING/PAGE_SIZE;
+  constexpr Offsets start_off{start};
+  static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);
+
+  size_t pdpt_pfn = pmm::allocPFN();
+  uint64_t *pdpt = pageAddress<uint64_t *>(pdpt_pfn);
+  memset(pdpt, 0, PAGE_SIZE);
+  dbg::panic_assert(pml4[start_off.pml4i] == 0, "pml4[pml4i] == 0\n");
+  pml4[start_off.pml4i] = setPFN(PRESENT|WRITEABLE|WRITE_THROUGH|CACHE_DISABLED, pdpt_pfn);
 }
 
 void AddressSpace::initUCIdentityMapping() {

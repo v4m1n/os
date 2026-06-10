@@ -12,8 +12,8 @@ namespace mboot {
 size_t memory_info_size;
 multiboot_mmap_entry memory_info[16];
 
-
-
+struct RSDP;
+RSDP *rsdp;
 
 void parse(uint64_t header) {
   uint32_t size = *(uint32_t*)header;
@@ -45,7 +45,7 @@ void parse(uint64_t header) {
           auto m = (multiboot_tag_mmap *)i;
           const size_t num = (m->size-16)/m->entry_size;
           dbg::printf("memory map:\n");
-          dbg::panic_assert(num <= 16, "too many memory regions\n");
+          dbg::panic_assert(num <= 64, "too many memory regions\n");
           memory_info_size = num;
           memcpy(memory_info, m->entries, sizeof(multiboot_mmap_entry)*num);
           size_t k = 0;
@@ -87,6 +87,18 @@ void parse(uint64_t header) {
           dbg::panic_assert(load_addr->load_base_addr == 0x100000U, "kernel not loaded to the correct address\n");
         }
         break;
+      case MULTIBOOT_TAG_TYPE_ACPI_OLD:
+        {
+          auto tag = (multiboot_tag_old_acpi *)i;
+          if (!rsdp) rsdp = (RSDP *)tag->rsdp;
+          break;
+        }
+      case MULTIBOOT_TAG_TYPE_ACPI_NEW:
+        {
+          auto tag = (multiboot_tag_new_acpi *)i;
+          rsdp = (RSDP *)tag->rsdp;
+          break;
+        }
       default:
         dbg::printf("ignoring tag type {d}\n", type);
         break;

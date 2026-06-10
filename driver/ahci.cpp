@@ -13,7 +13,7 @@ AHCI::AHCI(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   //bar_phys_ = (bar1 & ~0xfU) | bar2<<32;
   //dbg::panic_assert(bar_phys_&~(PAGE_SIZE-1), "nvme device mmio not page aligned {}\n", bar_phys_);
   //dbg::printf("nvme mmio {}\n", bar_phys_);
-  hba_ = vmm::identUCAddress<volatile HBA_MEM *>(bar5);
+  hba_ = (volatile HBA_MEM *)vmm::AddressSpace::ioremap(bar5/PAGE_SIZE);
   //doorbells_ = vmm::identUCAddress<uint16_t *>(bar_phys_+0x1000);
   dbg::printf("ghc: {}\n", hba_->ghc);
   dbg::printf("bios/os handoff: {}\n", hba_->bohc);
@@ -41,15 +41,15 @@ AHCI::AHCI(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
     size_t page = pmm::allocZeroPFN()*PAGE_SIZE;
     hba_->ports[i].clb = page;
     hba_->ports[i].clbu = page>>32;
-    cmd_buffers[i] = vmm::identUCAddress<volatile FIS *>(page);
+    cmd_buffers[i] = vmm::identAddress<volatile FIS *>(page);
 
     page = pmm::allocZeroPFN()*PAGE_SIZE;
     hba_->ports[i].fb = page;
     hba_->ports[i].fbu = page>>32;
-    fis_buffers[i] = vmm::identUCAddress<volatile FIS *>(page);
+    fis_buffers[i] = vmm::identAddress<volatile FIS *>(page);
   }
 
-  dbg::panic("done\n");
+  //dbg::panic("done\n");
 }
 
 

@@ -7,13 +7,13 @@
 NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   pci::writePCIConfig<uint16_t>(bus, dev, 0, 0x4, (1U<<4) | (1U<<2) | (1U<<1) | 1U);
   uint64_t bar1 = pci::readPCIConfig<uint32_t>(bus, dev, 0, 0x10);
-  uint64_t bar2 = pci::readPCIConfig<uint32_t>(bus, dev, 0, 0x18);
+  uint64_t bar2 = pci::readPCIConfig<uint32_t>(bus, dev, 0, 0x14);
   dbg::panic_assert(bar1 != -1U && bar2 != -1U, "nvme device does not exist ({}, {})\n", bus, dev);
   bar_phys_ = (bar1 & ~0xfU) | bar2<<32;
   dbg::panic_assert(bar_phys_&~(PAGE_SIZE-1), "nvme device mmio not page aligned {}\n", bar_phys_);
   dbg::printf("nvme mmio {}\n", bar_phys_);
-  bar_ = vmm::identUCAddress<Bar0 *>(bar_phys_);
-  doorbells_ = vmm::identUCAddress<uint16_t *>(bar_phys_+0x1000);
+  bar_ = (Bar0 *)vmm::AddressSpace::ioremap(bar_phys_/PAGE_SIZE);
+  doorbells_ = (uint16_t *)vmm::AddressSpace::ioremap((bar_phys_+0x1000)/PAGE_SIZE);
   //bar_->nvm_reset_ = 0x4E564D65U;
 
   bar_->controller_conf_ &= ~1ULL;
@@ -34,8 +34,8 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   bar_->admin_sub_queue_ = pmm::allocZeroPFN()*PAGE_SIZE;
   bar_->admin_comp_queue_ = pmm::allocZeroPFN()*PAGE_SIZE;
 
-  admin_queue_.sub_ = vmm::identUCAddress<Submission *>(bar_->admin_sub_queue_);
-  admin_queue_.comp_ = vmm::identUCAddress<Completion *>(bar_->admin_comp_queue_);
+  admin_queue_.sub_ = vmm::identAddress<Submission *>(bar_->admin_sub_queue_);
+  admin_queue_.comp_ = vmm::identAddress<Completion *>(bar_->admin_comp_queue_);
   admin_queue_.doorbell_ = doorbells_;
   admin_queue_.size_ = 64;
 
@@ -57,7 +57,7 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   Submission sub;
   sub.command_ = CRE_IO_COM;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  io_queue.comp_ = vmm::identUCAddress<Completion *>(sub.data_ptr1_);
+  io_queue.comp_ = vmm::identAddress<Completion *>(sub.data_ptr1_);
   sub.cdw10_ = (63<<16)|1;
   sub.cdw11_ = 1;
   admin_queue_.sendCommand(sub);
@@ -67,7 +67,7 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   
   sub.command_ = CRE_IO_SUB;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  io_queue.sub_ = vmm::identUCAddress<Submission *>(sub.data_ptr1_);
+  io_queue.sub_ = vmm::identAddress<Submission *>(sub.data_ptr1_);
   sub.cdw10_ = (63<<16)|1;
   sub.cdw11_ = (1<<16)|1;
   admin_queue_.sendCommand(sub);
@@ -82,13 +82,13 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
   while(!(tmp = admin_queue_.popResult()).first);
   dbg::panic_assert(tmp.second.status_field_ == 0, "identify error\n");
 
-  dbg::dumpPage(vmm::identUCAddress<uint64_t *>(sub.data_ptr1_));
-  dbg::printf(vmm::identUCAddress<char *>(sub.data_ptr1_));
+  dbg::dumpPage(vmm::identAddress<uint64_t *>(sub.data_ptr1_));
+  dbg::printf(vmm::identAddress<char *>(sub.data_ptr1_));
 
 
   sub.command_ = 2;
   sub.data_ptr1_ = pmm::allocZeroPFN()*PAGE_SIZE;
-  vmm::identUCAddress<uint64_t *>(sub.data_ptr1_)[0] = pmm::allocZeroPFN()*PAGE_SIZE;
+  vmm::identAddress<uint64_t *>(sub.data_ptr1_)[0] = pmm::allocZeroPFN()*PAGE_SIZE;
   sub.data_ptr2_ = 0;
   sub.metadata_ptr_ = pmm::allocZeroPFN(PAGE_SIZE*16)*PAGE_SIZE;
   sub.namespace_ = 1;
@@ -103,7 +103,7 @@ NVMe::NVMe(uint8_t bus, uint8_t dev) : bus_(bus), dev_(dev) {
     io_queue.sendCommand(sub);
     while(!(tmp = io_queue.popResult()).first);
     dbg::panic_assert(tmp.second.status_field_ == 0, "io read error {}\n", tmp.second.status_field_);
-    dbg::dumpPage(vmm::identUCAddress<uint8_t *>(sub.data_ptr1_), PAGE_SIZE);
+    dbg::dumpPage(vmm::identAddress<uint8_t *>(sub.data_ptr1_), PAGE_SIZE);
     sub.cdw10_ += PAGE_SIZE;
   }
   dbg::panic("done\n");

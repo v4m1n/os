@@ -1,5 +1,5 @@
 #include "string.h"
-
+extern "C" {
 void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *d = (uint8_t *)dest;
   uint8_t *s = (uint8_t *)src;
@@ -11,4 +11,5 @@ void *memset(void *s, int c, size_t n) {
   uint8_t *d = (uint8_t *)s;
   while(n--) *d++ = c;
   return s;
+}
 }

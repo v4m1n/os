@@ -11,7 +11,7 @@ extern size_t kernel_start;
 extern size_t kernel_end;
 
 namespace pmm {
-MemoryRegion mem_regions[16];
+MemoryRegion mem_regions[64];
 static uint8_t *bitmap_;
 static size_t bitmap_size_;
 static size_t lowest_free_;
@@ -86,7 +86,8 @@ void initPageManager() {
   }
   memcpy(bitmap_, init_bitmap, PAGE_SIZE);
 
-  vmm::AddressSpace::initUCIdentityMapping();
+  //vmm::AddressSpace::initUCIdentityMapping();
+  vmm::AddressSpace::initIORemap();
 }
 
 size_t allocZeroPFN(size_t size) {
