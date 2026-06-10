@@ -1,8 +1,9 @@
 #pragma once
 #include "stdint.h"
 #include "utility.h"
+#include "block.h"
 
-class NVMe {
+class NVMe : public BlockDevice {
 private:
   struct Completion;
   struct Submission;
@@ -15,6 +16,11 @@ public:
   NVMe(uint8_t bus, uint8_t dev);
 
   void sendAdminCommand(Submission sub);
+
+  int readBlocks(uint64_t lba, uint32_t count, void *buffer) override;
+  int writeBlocks(uint64_t lba, uint32_t count, const void *buffer) override;
+  uint32_t getBlockSize() const override { return 512; }
+  uint64_t getBlockCount() const override { return 1048576; } // 512 MB disk.img has 1048576 blocks
 
 private:
 
@@ -88,6 +94,7 @@ private:
   uint16_t *doorbells_;
 
   Queue admin_queue_;
+  Queue io_queue_;
 
   enum AdminCommands {
     DEL_IO_SUB = 0,

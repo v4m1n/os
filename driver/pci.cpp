@@ -4,6 +4,9 @@
 #include "debug.h"
 #include "nvme.h"
 #include "ahci.h"
+#include "driver/block.h"
+#include "kmm.h"
+#include "new.h"
 
 namespace pci {
 
@@ -21,7 +24,8 @@ namespace pci {
         auto prog_if = readPCIConfig<uint8_t>(bus, dev, 0, 9);
         if (cc == 1 && sc == 8 && prog_if == 2) {
           dbg::printf("    NVMe\n");
-          NVMe drive(bus, dev);
+          auto *drive = new NVMe(bus, dev);
+          block::registerDevice(drive);
         }
         if (cc == 1 && sc == 6) {
           dbg::printf("    AHCI\n");

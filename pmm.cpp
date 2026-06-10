@@ -125,7 +125,8 @@ size_t allocPFN(size_t size) {
   dbg::panic("out of pages\n");
 }
 void freePFN(size_t pfn, size_t size) {
-  while(size--) {
+  size_t pages = size / PAGE_SIZE;
+  while(pages--) {
     const size_t idx = pfn/8;
     const size_t offset = pfn%8;
     dbg::panic_assert(pfn < bitmap_size_, "free pfn, pfn too large {}\n", pfn);
