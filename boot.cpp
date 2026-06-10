@@ -106,88 +106,49 @@ extern "C"
   irq::parseRSDT();
   pci::deviceDetection();
 
+  for (uint32_t i = 0; i < block::getDeviceCount(); ++i) {
+    block::detectAndMountPartitions(block::getDevice(i));
+  }
+
   {
-    struct PartitionTableEntry {
-      uint8_t attributes_;
-      uint8_t partition_start_chs_[3];
-      uint8_t partition_type_;
-      uint8_t last_sector_chs_[3];
-      uint32_t partition_start_lba_;
-      uint32_t number_of_sections_;
-    } __attribute__((packed));
+    vfs::VfsNode *node = vfs::open("/boot/grub/grub.cfg");
+    if (node) {
+      dbg::printf("Opened /boot/grub/grub.cfg successfully! Size: {} bytes\n", (uint64_t)node->getSize());
+      char *buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
+      if (buf) {
+        int read_bytes = node->read(0, node->getSize(), buf);
+        if (read_bytes > 0) {
+          buf[read_bytes] = '\0';
+          dbg::printf("--- grub.cfg Content ---\n{}\n-----------------------\n", buf);
+        }
+        kmm::kfree(buf);
+      }
 
-    struct MBR {
-      uint8_t bootstrap_[440];
-      uint32_t disk_id_;
-      uint16_t reserved_;
-      PartitionTableEntry partition_table_[4];
-      uint16_t signature_;
-    } __attribute__((packed));
-
-    BlockDevice *dev = block::getDevice(0);
-    if (dev) {
-      MBR mbr;
-      if (dev->readBlocks(0, 1, &mbr) == 0 && mbr.signature_ == 0xAA55) {
-        for (int i = 0; i < 4; ++i) {
-          auto &entry = mbr.partition_table_[i];
-          if (entry.partition_type_ != 0) {
-            dbg::printf("Found partition {}: type={}, start_lba={}\n",
-                        (uint64_t)i, (uint64_t)entry.partition_type_, (uint64_t)entry.partition_start_lba_);
-            auto *fs = new fat32::FAT32FileSystem(dev, entry.partition_start_lba_);
-            if (fs->init()) {
-              vfs::mount("/", fs);
-              dbg::printf("Mounted FAT32 filesystem from partition {} to /\n", (uint64_t)i);
-              
-              vfs::VfsNode *node = vfs::open("/boot/grub/grub.cfg");
-              if (node) {
-                dbg::printf("Opened /boot/grub/grub.cfg successfully! Size: {} bytes\n", (uint64_t)node->getSize());
-                char *buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
-                if (buf) {
-                  int read_bytes = node->read(0, node->getSize(), buf);
-                  if (read_bytes > 0) {
-                    buf[read_bytes] = '\0';
-                    dbg::printf("--- grub.cfg Content ---\n{}\n-----------------------\n", buf);
-                  }
-                  kmm::kfree(buf);
-                }
-
-                // Test write support
-                const char *test_str = "\n# Hello from the FAT32 Write Driver!\n";
-                uint32_t write_len = strlen(test_str);
-                uint64_t original_size = node->getSize();
-                int written = node->write(original_size, write_len, test_str);
-                if (written == (int)write_len) {
-                  dbg::printf("Successfully wrote to /boot/grub/grub.cfg! New size: {} bytes\n", (uint64_t)node->getSize());
-                  
-                  // Read back to verify
-                  char *new_buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
-                  if (new_buf) {
-                    int read_back = node->read(0, node->getSize(), new_buf);
-                    if (read_back > 0) {
-                      new_buf[read_back] = '\0';
-                      dbg::printf("--- Verification of New Content ---\n{}\n-----------------------\n", new_buf);
-                    }
-                    kmm::kfree(new_buf);
-                  }
-                } else {
-                  dbg::printf("Failed to write to file: returned {}\n", (int64_t)written);
-                }
-
-                delete node;
-              } else {
-                dbg::printf("Failed to open /boot/grub/grub.cfg\n");
-              }
-              break;
-            } else {
-              delete fs;
-            }
+      // Test write support
+      const char *test_str = "\n# Hello from the FAT32 Write Driver!\n";
+      uint32_t write_len = strlen(test_str);
+      uint64_t original_size = node->getSize();
+      int written = node->write(original_size, write_len, test_str);
+      if (written == (int)write_len) {
+        dbg::printf("Successfully wrote to /boot/grub/grub.cfg! New size: {} bytes\n", (uint64_t)node->getSize());
+        
+        // Read back to verify
+        char *new_buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
+        if (new_buf) {
+          int read_back = node->read(0, node->getSize(), new_buf);
+          if (read_back > 0) {
+            new_buf[read_back] = '\0';
+            dbg::printf("--- Verification of New Content ---\n{}\n-----------------------\n", new_buf);
           }
+          kmm::kfree(new_buf);
         }
       } else {
-        dbg::printf("MBR signature invalid or read failed\n");
+        dbg::printf("Failed to write to file: returned {}\n", (int64_t)written);
       }
+
+      delete node;
     } else {
-      dbg::printf("No block devices registered\n");
+      dbg::printf("Failed to open /boot/grub/grub.cfg\n");
     }
   }
   irq::launchCores();

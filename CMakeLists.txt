@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
+set(CMAKE_CXX_COMPILER "g++")
+set(CMAKE_ASM_COMPILER "g++")
+set(CMAKE_C_COMPILER "gcc")
+
 # set the project name and version
 project(OS)
 
@@ -16,19 +20,13 @@ FILE(GLOB SSource *.S)
 #set(CMAKE_ASM_NASM_LINK_EXECUTABLE "ld <CMAKE_ASM_NASM_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
 #set_source_files_properties(${SSource} PROPERTIES LANGUAGE ASM_NASM)
 
-ADD_EXECUTABLE(kernel.elf ${CPPSource} ${SSource})
-
-set(CMAKE_CXX_COMPILER "g++")
-set(CMAKE_ASM_COMPILER "g++")
-set(CMAKE_C_COMPILER "gcc")
-
 set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -fanalyzer -static")
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CMAKE_KERNEL_FLAGS} -nostdinc++ -fno-rtti -std=c++26 -g")
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/linker.ld")
 
-
+ADD_EXECUTABLE(kernel.elf ${CPPSource} ${SSource})
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/containers)
@@ -43,7 +41,6 @@ add_custom_command(OUTPUT disk.img
 add_custom_target(image
   DEPENDS disk.img
 )
-# add_library(OBJS OBJECT disk.img)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/disk/grub.cfg ${CMAKE_CURRENT_BINARY_DIR}/grub.cfg COPYONLY)
 add_custom_command(OUTPUT dsk
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/disk/setup.sh
@@ -53,17 +50,14 @@ add_custom_command(OUTPUT dsk
 )
   
 
-#COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -enable-kvm -cpu host`"
 add_custom_target(qemu
   COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd
   COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd`"
-  #COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,id=disk,file=disk.img,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -enable-kvm -cpu host`"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 add_custom_target(kvm
   COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -enable-kvm -cpu host -bios /usr/share/ovmf/x64/OVMF.4m.fd
   COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -enable-kvm -cpu host -bios /usr/share/ovmf/x64/OVMF.4m.fd`"
-  #COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,id=disk,file=disk.img,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -enable-kvm -cpu host`"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -75,4 +69,7 @@ add_custom_target(
 
 add_dependencies(disk image)
 add_dependencies(disk kernel.elf)  
+
+add_dependencies(qemu disk)
+add_dependencies(kvm disk)
 

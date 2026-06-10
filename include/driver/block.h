@@ -14,4 +14,5 @@ namespace block {
   void registerDevice(BlockDevice *dev);
   BlockDevice *getDevice(uint32_t index);
   uint32_t getDeviceCount();
+  void detectAndMountPartitions(BlockDevice *dev);
 }
