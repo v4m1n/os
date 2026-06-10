@@ -385,10 +385,11 @@ void testfunc(uint64_t) {
   dbg::printf("{d}a\n", x);
   lock.unlock();
   while(1) hlt();
+
 }
 uint64_t cores_up = 0;
-extern "C"
-void core_boot(uint64_t id) {
+
+extern "C" void core_boot(uint64_t id) {
 
   auto &cpu = cpus.at(id);
   cpu.id_ = apic->id;
