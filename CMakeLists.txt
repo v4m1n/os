@@ -4,8 +4,10 @@ set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_ASM_COMPILER "g++")
 set(CMAKE_C_COMPILER "gcc")
 
-# set the project name and version
 project(OS)
+
+set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "")
+set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "")
 
 enable_language(C ASM)
 
@@ -22,7 +24,7 @@ FILE(GLOB SSource CONFIGURE_DEPENDS *.S)
 #set_source_files_properties(${SSource} PROPERTIES LANGUAGE ASM_NASM)
 
 set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -fanalyzer -static")
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CMAKE_KERNEL_FLAGS} -nostdinc++ -fno-rtti -fmodules-ts -g")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CMAKE_KERNEL_FLAGS} -nostdinc++ -fno-rtti -fmodules-ts -g -D_GLIBCXX_OS_DEFINES -D__glibcxx_format=1 -D__glibcxx_format_ranges=202207L")
 set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_ASM_FLAGS  "${CMAKE_ASM_FLAGS} ${CMAKE_KERNEL_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/linker.ld")
@@ -33,9 +35,27 @@ target_sources(kernel.elf PUBLIC FILE_SET CXX_MODULES FILES
 )
 set_target_properties(kernel.elf PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/include/containers)
-include_directories(${PROJECT_SOURCE_DIR}/include/driver)
+# Automatically detect compiler's standard C++ and C freestanding include paths
+execute_process(
+  COMMAND ${CMAKE_CXX_COMPILER} -E -x c++ -v /dev/null
+  ERROR_VARIABLE GCC_OUTPUT
+  OUTPUT_QUIET
+)
+string(REPLACE "\n" ";" GCC_LINES "${GCC_OUTPUT}")
+foreach(LINE ${GCC_LINES})
+  string(STRIP "${LINE}" LINE_STRIPPED)
+  if(LINE_STRIPPED MATCHES "c\\+\\+" OR (LINE_STRIPPED MATCHES "lib/gcc" AND LINE_STRIPPED MATCHES "include$"))
+    get_filename_component(ABS_PATH "${LINE_STRIPPED}" ABSOLUTE)
+    if(EXISTS "${ABS_PATH}")
+      message(STATUS "Found compiler include path: ${ABS_PATH}")
+      target_include_directories(kernel.elf SYSTEM BEFORE PRIVATE "${ABS_PATH}")
+    endif()
+  endif()
+endforeach()
+
+target_include_directories(kernel.elf PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(kernel.elf PRIVATE ${PROJECT_SOURCE_DIR}/include/containers)
+target_include_directories(kernel.elf PRIVATE ${PROJECT_SOURCE_DIR}/include/driver)
 
 add_custom_command(OUTPUT disk.img
   COMMAND xz -d -c "${CMAKE_CURRENT_SOURCE_DIR}/disk/disk.img.xz" > ${CMAKE_CURRENT_BINARY_DIR}/disk.img

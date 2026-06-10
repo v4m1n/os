@@ -1,12 +1,8 @@
-#include "stddef.h"
+#include <cstddef>
 import knew;
 
 import kmm;
 
-void *operator new(size_t, void *p) { return p; }
-void *operator new[](size_t, void *p) { return p; }
-void  operator delete  (void *, void *) { };
-void  operator delete[](void *, void *) { };
 
 void *operator new(size_t size) {
   return kmm::kmalloc(size);

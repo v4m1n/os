@@ -1,5 +1,6 @@
-#include "stdint.h"
-#include "stddef.h"
+#include <cstddef>
+#include <algorithm>
+#include <cstdint>
 import knew;
 import cpu;
 import scheduler;

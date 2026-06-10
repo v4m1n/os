@@ -1,5 +1,5 @@
 module;
-#include "stdint.h"
+#include <cstdint>
 
 module block;
 import knew;

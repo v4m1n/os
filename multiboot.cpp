@@ -1,7 +1,7 @@
 module;
 #include "multiboot2.h"
-#include "stdint.h"
-#include "stddef.h"
+#include <cstdint>
+#include <cstddef>
 
 module multiboot;
 import string;

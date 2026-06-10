@@ -1,6 +1,6 @@
 module;
-#include "stdint.h"
-#include "stddef.h"
+#include <cstdint>
+#include <cstddef>
 
 module registers;
 import cpu;

@@ -1,5 +1,5 @@
 module;
-#include "stdint.h"
+#include <cstdint>
 
 module pci;
 import cpu;
