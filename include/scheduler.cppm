@@ -1,7 +1,6 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "array.h"
 
 export module scheduler;
 import vmm;
@@ -9,6 +8,7 @@ import registers;
 import gdt;
 import sync;
 import interrupts;
+import array;
 
 export extern "C++" struct Thread {
   uint64_t stack_[1024];

@@ -1,7 +1,7 @@
 module;
-#include "asm.h"
 
 module sync;
+import cpu;
 import debug;
 
 

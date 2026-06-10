@@ -1,7 +1,7 @@
 #include "stdint.h"
-#include "multiboot.h"
-#include "new.h"
-#include "asm.h"
+#include "stddef.h"
+import knew;
+import cpu;
 import scheduler;
 import block;
 import vfs;
@@ -16,6 +16,7 @@ import vmm;
 import registers;
 import interrupts;
 import pci;
+import multiboot;
 
 [[maybe_unused]] const volatile struct __attribute__((packed))
 {
@@ -44,10 +45,7 @@ extern uint8_t *bss_end[];
 extern uint8_t *bss_start[];
 extern size_t kernel_start;
 extern size_t kernel_end;
-}
 
-
-extern "C" {
 GDTE gdt[7] = {{},
                {.limit1=0xffffU, .base1=0, .base2=0, .accessed=0, .rw=1, .direction=0, .executable=1, .descriptor=1, .priv=0,
                 .present=1, .limit2=0xfU, .zero=0, .lmode=1, .size=0, .granularity=1, .base3=0},

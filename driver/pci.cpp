@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
-#include "asm.h"
-#include "new.h"
 
 module pci;
+import cpu;
+import knew;
 import nvme;
 import ahci;
 import block;

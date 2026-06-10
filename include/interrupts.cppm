@@ -1,13 +1,13 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "array.h"
 
 export module interrupts;
 import gdt;
 import debug;
 import vmm;
 import utility;
+import array;
 
 export extern "C" void context_return();
 export extern "C" void context_switch(void *dest, void *src);

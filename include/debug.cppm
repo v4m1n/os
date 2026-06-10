@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "asm.h"
 
 export module debug;
+import cpu;
 import sync;
 import pmm;
 

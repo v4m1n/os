@@ -1,5 +1,5 @@
-#include "new.h"
-#include "stdint.h"
+#include "stddef.h"
+import knew;
 
 import kmm;
 

@@ -1,8 +1,8 @@
 module;
 #include "stdint.h"
-#include "new.h"
 
 module block;
+import knew;
 import fat32;
 import vfs;
 import string;

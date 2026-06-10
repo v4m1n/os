@@ -1,11 +1,14 @@
-#pragma once
+module;
 #include "stddef.h"
-#include "new.h"
 
+export module array;
 import kmm;
 import debug;
+import utility;
+export import knew;
 
-template <typename T>
+
+export template <typename T>
 class array {
   size_t size_;
   T *data_;
@@ -37,7 +40,7 @@ public:
     auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*new_size));
 
     for (size_t i = 0; i < size_ && i < new_size; ++i) {
-      new (&new_data[i]) T(move(data[i]));
+      new (&new_data[i]) T(move(data_[i]));
     }
 
     if (size_ < new_size) {
@@ -61,7 +64,7 @@ public:
     auto new_data = reinterpret_cast<T *>(kmm::kmalloc(sizeof(T)*new_size));
 
     for (size_t i = 0; i < size_; ++i) {
-      new (&new_data[i]) T(move(data[i]));
+      new (&new_data[i]) T(move(data_[i]));
     }
 
     new (&new_data[size_]) T(args...);
@@ -87,4 +90,3 @@ public:
     return data_+size_;
   }
 };
-

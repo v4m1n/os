@@ -1,16 +1,17 @@
 module;
+#include "stdint.h"
 #include "stddef.h"
-#include "msr.h"
-#include "asm.h"
-#include "new.h"
 
 module registers;
+import cpu;
+import knew;
 import scheduler;
 import string;
 import kmm;
 import debug;
 import vmm;
 import interrupts;
+import msr;
 
 namespace thrd {
 

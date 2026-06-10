@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "asm.h"
 
 module nvme;
+import cpu;
 import string;
 import debug;
 import vmm;

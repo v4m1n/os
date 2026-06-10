@@ -1,18 +1,20 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "asm.h"
-#include "mpt.h"
-#include "acpi.h"
-#include "array.h"
-#include "msr.h"
 
 module interrupts;
+import cpu;
 import scheduler;
 import string;
 import pmm;
 import sync;
 import registers;
+import acpi;
+import mpt;
+import array;
+import msr;
+import kmm;
+import multiboot;
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
@@ -24,8 +26,6 @@ extern "C" uint8_t boot_stack[8192];
 extern "C" {
   size_t core_init_page = -1;
 }
-
-extern "C++" namespace mboot { extern RSDP *rsdp; }
 
 struct IntDes {
   IntDes(uint64_t offset, uint16_t segment, 

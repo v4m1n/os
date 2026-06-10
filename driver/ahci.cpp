@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "asm.h"
 
 module ahci;
+import cpu;
 import utility;
 import debug;
 import vmm;

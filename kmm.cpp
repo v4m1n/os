@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "new.h"
 
 module kmm;
+import knew;
 import string;
 import sync;
 import pmm;

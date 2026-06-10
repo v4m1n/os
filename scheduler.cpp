@@ -1,14 +1,16 @@
 module;
-#include "asm.h"
-#include "array.h"
+#include "stdint.h"
+#include "stddef.h"
 
 module scheduler;
+import cpu;
 import string;
 import kmm;
 import debug;
 import registers;
 import interrupts;
 import pmm;
+import array;
 
 array<CPU> cpus(0);
 

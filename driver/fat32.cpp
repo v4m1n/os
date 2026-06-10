@@ -1,8 +1,8 @@
 module;
 #include "stdint.h"
-#include "new.h"
 
 module fat32;
+import knew;
 import string;
 import kmm;
 import debug;

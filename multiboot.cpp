@@ -1,7 +1,9 @@
+module;
 #include "multiboot2.h"
 #include "stdint.h"
 #include "stddef.h"
 
+module multiboot;
 import string;
 import pmm;
 import debug;
@@ -16,7 +18,6 @@ namespace mboot {
 size_t memory_info_size;
 multiboot_mmap_entry memory_info[16];
 
-struct RSDP;
 RSDP *rsdp;
 
 void parse(uint64_t header) {

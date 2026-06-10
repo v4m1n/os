@@ -1,9 +1,9 @@
 module;
 #include "stdint.h"
 #include "stddef.h"
-#include "asm.h"
 
 module vmm;
+import cpu;
 import string;
 import pmm;
 import debug;

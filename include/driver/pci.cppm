@@ -1,8 +1,8 @@
 module;
 #include "stdint.h"
-#include "asm.h"
 
 export module pci;
+import cpu;
 
 export namespace pci {
 
