@@ -8,4 +8,3 @@ cmake -G Ninja "${src}"
 ninja
 
 echo "build directory at: ${folder}"
-thunar "${folder}"

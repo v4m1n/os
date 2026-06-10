@@ -1,6 +1,8 @@
 #include <cstddef>
-#include <algorithm>
 #include <cstdint>
+#include <ranges>
+
+
 import knew;
 import cpu;
 import scheduler;
@@ -90,6 +92,9 @@ extern "C"
   
   dbg::printf("parsing multiboot...\n");
   mboot::parse(mbootheader);
+
+
+
   //dbg::printf("parsing MPT...\n");
   //irq::parseMPT();
   dbg::printf("init pagemanager...\n");
