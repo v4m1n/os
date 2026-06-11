@@ -65,53 +65,63 @@ export namespace dbg {
     printdec((uint64_t)arg);
   }
   
-  template<typename T, typename ...U>
-  void printfu(const char *str, const T arg, const U... args) {
-    while(*str) {
-      if (*str == '{') {
-        if (!*++str) {
-          putchar('{');
-          return;
-        }
-        char x = *str;
-
-        if (x == '}') {
-          if constexpr(is_same_type<T, char *>::value ||
-                       is_same_type<T, const char *>::value ||
-                       is_same_type<T, char * const>::value ||
-                       is_same_type<T, const char * const>::value) {
-            printfu(arg);
+  template<typename ...Args>
+  void printfu(const char *str, const Args&... args) {
+    const char *p = str;
+    auto print_one = [](const char *&p, auto arg) {
+      using T = decltype(arg);
+      while (*p) {
+        if (*p == '{') {
+          if (!*++p) {
+            putchar('{');
+            return;
           }
-          else {
-            printhex(arg);
+          char x = *p;
+          if (x == '}') {
+            if constexpr (is_same_type<T, char *>::value ||
+                          is_same_type<T, const char *>::value ||
+                          is_same_type<T, char * const>::value ||
+                          is_same_type<T, const char * const>::value) {
+              printfu(arg);
+            } else {
+              printhex(arg);
+            }
+            p++;
+            break;
           }
-          return printfu(++str, args...);
-        }
-        if (*++str != '}') {
+          if (*(p + 1) == '}') {
+            if (x == 'x') {
+              printhex(arg);
+              p += 2;
+              break;
+            }
+            if (x == 'd') {
+              printdec(arg);
+              p += 2;
+              break;
+            }
+            if constexpr (is_same_type<T, char>::value) {
+              if (x == 'c') {
+                putchar(arg);
+                p += 2;
+                break;
+              }
+            }
+          }
           putchar('{');
           putchar(x);
-          goto next;
+          p++;
+          continue;
         }
-        if (x == 'x') {
-          printhex(arg);
-          return printfu(++str, args...);
-        }
-        if (x == 'd') {
-          printdec(arg);
-          return printfu(++str, args...);
-        }
-        if constexpr (is_same_type<T, char>::value) if (x == 'c') {
-          putchar(arg);
-          return printfu(++str, args...);
-        }
-        putchar('{');
-        putchar(x);
+        putchar(*p++);
       }
-  next:
-      putchar(*str);
-      ++str;
+    };
+    (print_one(p, args), ...);
+    while (*p) {
+      putchar(*p++);
     }
   }
+
   template<typename ...U>
   void printf(const char *str, const U... args) {
     lock_guard lck(lock);

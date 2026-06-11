@@ -22,9 +22,10 @@ void spinlock_irq::lock() {
   if_ = flg;
 }
 void spinlock_irq::unlock() {
-  if (if_)
-    irq::enableInterrupts();
+  auto flg = if_;
   locked_ = 0;
+  if (flg)
+    irq::enableInterrupts();
 }
 bool spinlock_irq::try_lock() {
   auto flg = irq::getIF();

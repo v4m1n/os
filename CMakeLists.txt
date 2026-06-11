@@ -30,7 +30,7 @@ FILE(GLOB SSource CONFIGURE_DEPENDS *.S)
 #set_source_files_properties(${SSource} PROPERTIES LANGUAGE ASM_NASM)
 option(ENABLE_ANALYZER "Enable GCC static analyzer (-fanalyzer)" ON)
 
-set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -static")
+set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -O0 -gdwarf-2 -Wl,--build-id=none -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -static")
 
 if(ENABLE_ANALYZER)
   set(CMAKE_KERNEL_FLAGS "${CMAKE_KERNEL_FLAGS} -fanalyzer")
@@ -48,6 +48,7 @@ target_sources(kernel.elf PUBLIC FILE_SET CXX_MODULES FILES
 set_target_properties(kernel.elf PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
 # Automatically detect compiler's standard C++ and C freestanding include paths
+set(COMPILER_INCLUDE_DIRS "")
 execute_process(
   COMMAND ${CMAKE_CXX_COMPILER} -E -x c++ -v /dev/null
   ERROR_VARIABLE GCC_OUTPUT
@@ -60,9 +61,13 @@ foreach(LINE ${GCC_LINES})
     get_filename_component(ABS_PATH "${LINE_STRIPPED}" ABSOLUTE)
     if(EXISTS "${ABS_PATH}")
       message(STATUS "Found compiler include path: ${ABS_PATH}")
-      target_include_directories(kernel.elf SYSTEM BEFORE PRIVATE "${ABS_PATH}")
+      list(APPEND COMPILER_INCLUDE_DIRS "${ABS_PATH}")
     endif()
   endif()
+endforeach()
+
+foreach(PATH ${COMPILER_INCLUDE_DIRS})
+  target_include_directories(kernel.elf SYSTEM BEFORE PRIVATE "${PATH}")
 endforeach()
 
 target_include_directories(kernel.elf PRIVATE ${PROJECT_SOURCE_DIR}/include)
@@ -79,13 +84,14 @@ add_custom_target(image
   DEPENDS disk.img
 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/disk/grub.cfg ${CMAKE_CURRENT_BINARY_DIR}/grub.cfg COPYONLY)
+add_subdirectory(userspace)
+
 add_custom_command(OUTPUT dsk
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/disk/setup.sh
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS disk.img
-  COMMENT "Copying kernel to disk..."
+  DEPENDS disk.img kernel.elf ${USERSPACE_APP_TARGETS}
+  COMMENT "Copying files to disk..."
 )
-  
 
 add_custom_target(qemu
   COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd -display none

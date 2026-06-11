@@ -97,12 +97,17 @@ mov %rbx, 1
 int 0x80
 mov %rcx, 0xdeadbeef
 int 0x80
-mov %rdx, 0x41414141414141
+mov %rdx, 0x0a414141414141
 int 0x80
 
+push %rdx
+mov %rax, 1
+mov %rdi, 0
+mov %rsi, %rsp
+mov %rcx, 8
+int 0x80
 
 1: jmp 1b
-
 
 
 test_code_end:

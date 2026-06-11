@@ -15,6 +15,7 @@ import array;
 import msr;
 import kmm;
 import multiboot;
+import syscall;
 
 #define INTERRUPT_GATE 0xE
 #define TRAP_GATE 0xF
@@ -102,9 +103,9 @@ void irq_handler_48() {
 }
 extern "C"
 void irq_handler_128(thrd::registers *regs) {
-  dbg::printf("syscall with parameters: \n");
-  thrd::registerDump(*regs);
-  ++regs->r8;
+  irq::enableInterrupts();
+  regs->rax = syscall::handler(regs->rax, regs->rdi, regs->rsi, regs->rcx, regs->rdx, regs->r8, regs->r9);
+  irq::disableInterrupts();
 }
 extern "C"
 void irq_handler_254() {
