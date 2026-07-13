@@ -125,7 +125,7 @@ extern "C"
       dbg::printf("Opened /boot/grub/grub.cfg successfully! Size: {} bytes\n", (uint64_t)node->getSize());
       char *buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
       if (buf) {
-        int read_bytes = node->read(0, node->getSize(), buf);
+        int64_t read_bytes = node->read(0, node->getSize(), buf);
         if (read_bytes > 0) {
           buf[read_bytes] = '\0';
           dbg::printf("--- grub.cfg Content ---\n{}\n-----------------------\n", buf);
@@ -137,14 +137,14 @@ extern "C"
       const char *test_str = "\n# Hello from the FAT32 Write Driver!\n";
       uint32_t write_len = strlen(test_str);
       uint64_t original_size = node->getSize();
-      int written = node->write(original_size, write_len, test_str);
-      if (written == (int)write_len) {
+      int64_t written = node->write(original_size, write_len, test_str);
+      if (written == (int64_t)write_len) {
         dbg::printf("Successfully wrote to /boot/grub/grub.cfg! New size: {} bytes\n", (uint64_t)node->getSize());
         
         // Read back to verify
         char *new_buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
         if (new_buf) {
-          int read_back = node->read(0, node->getSize(), new_buf);
+          int64_t read_back = node->read(0, node->getSize(), new_buf);
           if (read_back > 0) {
             new_buf[read_back] = '\0';
             dbg::printf("--- Verification of New Content ---\n{}\n-----------------------\n", new_buf);

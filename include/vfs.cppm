@@ -19,8 +19,8 @@ struct DirectoryEntry {
 class VfsNode {
 public:
   virtual ~VfsNode() = default;
-  virtual int read(uint64_t offset, uint32_t size, void *buffer) = 0;
-  virtual int write(uint64_t offset, uint32_t size, const void *buffer) = 0;
+  virtual int64_t read(uint64_t offset, uint32_t size, void *buffer) = 0;
+  virtual int64_t write(uint64_t offset, uint32_t size, const void *buffer) = 0;
   virtual int readdir(uint32_t index, DirectoryEntry &entry) = 0;
   virtual VfsNode *finddir(const char *name) = 0;
   virtual uint64_t getSize() const = 0;

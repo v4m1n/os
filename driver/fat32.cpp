@@ -43,7 +43,7 @@ FAT32Node::FAT32Node(FAT32FileSystem *fs, FATDirEntry entry, uint32_t cluster, c
   name_[sizeof(name_) - 1] = '\0';
 }
 
-int FAT32Node::read(uint64_t offset, uint32_t size, void *buffer) {
+int64_t FAT32Node::read(uint64_t offset, uint32_t size, void *buffer) {
   uint64_t file_size = getSize();
   if (offset >= file_size) return 0;
   if (offset + size > file_size) {
@@ -116,7 +116,7 @@ void FAT32Node::updateDirectoryEntry() {
   kmm::kfree(sector_buf);
 }
 
-int FAT32Node::write(uint64_t offset, uint32_t size, const void *buffer) {
+int64_t FAT32Node::write(uint64_t offset, uint32_t size, const void *buffer) {
   uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
   uint64_t needed_end = offset + size;
   uint64_t current_allocated_bytes = 0;

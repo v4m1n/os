@@ -60,8 +60,8 @@ class FAT32Node : public vfs::VfsNode {
 public:
   FAT32Node(FAT32FileSystem *fs, FATDirEntry entry, uint32_t cluster, const char *name, uint64_t dir_sector = 0, uint32_t dir_offset = 0);
   
-  int read(uint64_t offset, uint32_t size, void *buffer) override;
-  int write(uint64_t offset, uint32_t size, const void *buffer) override;
+  int64_t read(uint64_t offset, uint32_t size, void *buffer) override;
+  int64_t write(uint64_t offset, uint32_t size, const void *buffer) override;
   int readdir(uint32_t index, vfs::DirectoryEntry &entry) override;
   vfs::VfsNode *finddir(const char *name) override;
   uint64_t getSize() const override;
