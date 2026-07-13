@@ -29,6 +29,7 @@ export struct CPU {
   size_t stack_start_;
   size_t tick_ = 0;
   ArchCPU arch_;
+  Thread *cleanup_list_ = nullptr;
   spinlock_irq list_lock_;
   Thread *list_ = nullptr;
 };

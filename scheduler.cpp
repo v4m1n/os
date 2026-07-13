@@ -131,6 +131,21 @@ test_code_end:
 
   return thread;
 }
+
+void cleanupTask() {
+  while(1) {
+    if (!getCPUStorage<CPU>(0)->cleanup_list_) {
+      schedule();
+      continue;
+    }
+    irq::disableInterrupts();
+    Thread *cleanup_list_ = getCPUStorage<CPU>(0)->cleanup_list_;
+    getCPUStorage<CPU>(0)->cleanup_list_ = 0;
+    irq::enableInterrupts();
+    (void) cleanup_list_;
+
+  }
+}
 void idle() {
   size_t tick = getCPUStorage<CPU>(0)->tick_;
   schedule();
