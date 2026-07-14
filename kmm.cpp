@@ -196,6 +196,7 @@ namespace kmm {
   }
 
   void kfree(void *ptr) {
+    if (!ptr) return;
     kfree_slab(ptr);
   }
 }

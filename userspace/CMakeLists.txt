@@ -5,7 +5,7 @@ set(CMAKE_ASM_FLAGS "")
 
 # Compile/link options for userspace stdlib and applications
 set(USERSPACE_COMPILE_FLAGS "-m64" "-O2" "-gdwarf-2" "-Wall" "-Wextra" "-Werror" "-Wno-nonnull-compare" "-nostdinc" "-fno-builtin" "-fno-exceptions" "-fno-stack-protector" "-fcf-protection=none" "-fno-pic" "-fno-pie" "-fcheck-new")
-set(USERSPACE_LINK_FLAGS "-nostdlib" "-nostartfiles" "-nodefaultlibs" "-static" "-no-pie" "-Wl,-T,${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
+set(USERSPACE_LINK_FLAGS "-nostdlib" "-nostartfiles" "-nodefaultlibs" "-static" "-no-pie" "-Wl,--build-id=none" "-Wl,-T,${CMAKE_CURRENT_SOURCE_DIR}/linker.ld")
 set(USERSPACE_ASM_FLAGS "-m64" "-gdwarf-2" "-nostdlib" "-fcf-protection=none" "-fno-pic" "-fno-pie")
 
 # Userspace Standard Library

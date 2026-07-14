@@ -49,6 +49,7 @@ class AddressSpace {
     static uint64_t kernel_page_table_;
 
     AddressSpace();
+    ~AddressSpace();
 
     AddressSpace(AddressSpace &) = delete;
     AddressSpace(AddressSpace &&) = delete;

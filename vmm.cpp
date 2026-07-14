@@ -26,6 +26,34 @@ AddressSpace::AddressSpace() {
   pml4_ = pmm::allocZeroPFN()*PAGE_SIZE;
   memcpy(identAddress<void *>(pml4_), pml4, PAGE_SIZE);
 }
+AddressSpace::~AddressSpace() {
+  auto pml4 = identAddress<uint64_t *>(pml4_);
+  for (size_t pml4i = 0; pml4i < 256; ++pml4i) {
+
+    if ((pml4[pml4i] & PRESENT) == 0) continue;
+    auto pdpt = pageAddress<uint64_t *>(getPFN(pml4[pml4i]));
+
+    for (size_t pdpti = 0; pdpti < 512; ++pdpti) {
+
+      if ((pdpt[pdpti] & PRESENT) == 0) continue;
+      auto pd = pageAddress<uint64_t *>(getPFN(pdpt[pdpti]));
+
+      for (size_t pdi = 0; pdi < 512; ++pdi) {
+        if ((pd[pdi] & PRESENT) == 0) continue;
+        auto pt = pageAddress<uint64_t *>(getPFN(pdpt[pdi]));
+
+        for (size_t pti = 0; pti < 512; ++pti) {
+          if ((pt[pti] & PRESENT) == 0) continue;
+          pmm::freePFN(getPFN(pt[pti]));
+        }
+        pmm::freePFN(getPFN(pd[pdi]));
+      }
+      pmm::freePFN(getPFN(pdpt[pdpti]));
+    }
+    pmm::freePFN(getPFN(pml4[pml4i]));
+  }
+  pmm::freePFN(pml4_/PAGE_SIZE);
+}
 
 bool AddressSpace::mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx) {
   const Offsets off{vpn};
@@ -71,27 +99,35 @@ uint64_t AddressSpace::unmapPFN(const uint64_t vpn) {
   size_t *pt;
   auto pml4 = identAddress<uint64_t *>(pml4_);
 
-  if ((pml4[off.pml4i] & PRESENT) == 0) {
-    return -1;
-  }
+  if ((pml4[off.pml4i] & PRESENT) == 0) return -1;
   pdpt = pageAddress<uint64_t *>(getPFN(pml4[off.pml4i]));
 
-  if ((pdpt[off.pdpti] & PRESENT) == 0) {
-    return -1;
-  }
+  if ((pdpt[off.pdpti] & PRESENT) == 0) return -1;
   pd = pageAddress<uint64_t *>(getPFN(pdpt[off.pdpti]));
 
-  if ((pd[off.pdi] & PRESENT) == 0) {
-    return -1;
-  }
+  if ((pd[off.pdi] & PRESENT) == 0) return -1;
   pt = pageAddress<uint64_t *>(getPFN(pd[off.pdi]));
 
-  if (!(pt[off.pti] & PRESENT)) {
-    return -1;
-  }
-
+  if (!(pt[off.pti] & PRESENT)) return -1;
   auto pfn = getPFN(pt[off.pti]); 
+
   pt[off.pti] = 0;
+
+  if (!memzero(pt, PAGE_SIZE)) return pfn;
+  auto pt_pfn = getPFN(pd[off.pdi]);
+  pd[off.pdi] = 0;
+  pmm::freePFN(pt_pfn);
+
+  if (!memzero(pd, PAGE_SIZE)) return pfn;
+  auto pd_pfn = getPFN(pdpt[off.pdpti]);
+  pdpt[off.pdpti] = 0;
+  pmm::freePFN(pd_pfn);
+  
+  if (!memzero(pdpt, PAGE_SIZE)) return pfn;
+  auto pdpt_pfn = getPFN(pml4[off.pml4i]);
+  pml4[off.pml4i] = 0;
+  pmm::freePFN(pdpt_pfn);
+
   return pfn;
 }
 

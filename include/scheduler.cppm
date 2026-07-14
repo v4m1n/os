@@ -9,15 +9,19 @@ import gdt;
 import sync;
 import interrupts;
 import array;
+import loader;
+import utility;
 
 export extern "C++" struct Thread {
   uint64_t stack_[1024];
   bool sleeping_;
-  uint64_t current_stack_;
   Thread *next_;
   Thread *prev_;
+  uint64_t current_stack_;
+  uint64_t pid_;
   thrd::ArchThrd arch_;
-  vmm::AddressSpace *address_space_ = nullptr;
+  util::shared_ptr<Loader> loader_;
+  util::shared_ptr<vmm::AddressSpace> address_space_ = nullptr;
 };
 
 export struct CPU {
@@ -50,8 +54,10 @@ export namespace sched {
 
   Thread *popThread();
 
+  Thread *getCurrentThread();
+
   [[nodiscard]] Thread *createKernelThread(size_t function, size_t arg);
 
-  [[nodiscard]] Thread *createUserThread(size_t function, size_t arg);
+  [[nodiscard]] Thread *createUserThread(size_t function, size_t arg, util::shared_ptr<Loader> &loader);
 
 }

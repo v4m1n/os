@@ -9,6 +9,7 @@ import debug;
 import vfs;
 import string;
 import array;
+import scheduler;
 
 #include <elf.h>
 
@@ -16,7 +17,7 @@ bool Loader::init(const char *path) {
   dbg::panic_assert(path, "loader path is null\n");
 
   file_ = vfs::open(path);
-  if (file_) goto fail;
+  if (!file_) goto fail;
 
   elf64_hdr hdr;
 
@@ -44,11 +45,17 @@ bool Loader::init(const char *path) {
   if (file_->read(hdr.e_phoff, ph_size, phdrs_.data()) != (int64_t)ph_size)
     goto fail;
 
+  entry_ = hdr.e_entry;
+
 
   return true;
 fail:
   delete file_;
   return false;
+}
+void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute) {
+  auto thrd = sched::getCurrentThread();
+  dbg::printf("pagefualt @ {} by {}, p {}, w {}, e {}\n", addr, thrd, present, write, execute);
 }
 
 Loader::~Loader() {

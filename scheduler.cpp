@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 
 module scheduler;
 import cpu;
@@ -16,11 +17,18 @@ array<CPU> cpus(0);
 
 namespace sched {
 
+std::atomic<uint64_t> pid_cnt;
+static_assert(decltype(pid_cnt)::is_always_lock_free);
+
+Thread *getCurrentThread() {
+  auto cpu = getCPUStorage<CPU>(0);
+  return cpu->current_thread_;
+}
+
 void schedule() {
   bool IF = irq::getIF();
   irq::disableInterrupts();
   auto cpu = getCPUStorage<CPU>(0);
-
   auto old = cpu->current_thread_;
   cpu->current_thread_ = nextThread();
   context_switch(&cpu->current_thread_->current_stack_, &old->current_stack_);
@@ -82,6 +90,7 @@ void launch() {
   memset(thread, 0, sizeof(Thread));
   const auto regs = thrd::setupRegisters(function, reinterpret_cast<size_t>(thread->stack_)+sizeof(thread->stack_), arg);
   thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
+  thread->pid_ = ++pid_cnt;
   return thread;
 }
 
@@ -113,21 +122,23 @@ int 0x80
 test_code_end:
 )");
 
-[[nodiscard]] Thread *createUserThread([[maybe_unused]]size_t function, size_t arg) {
+[[nodiscard]] Thread *createUserThread(size_t function, size_t arg, util::shared_ptr<Loader> &loader) {
   auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
   memset(thread, 0, sizeof(Thread));
 
-  constexpr uint64_t CODE_START = 0x8000000ULL;
+  //constexpr uint64_t CODE_START = 0x8000000ULL;
   constexpr uint64_t STACK_START = (1ULL<<47)-PAGE_SIZE;
 
-  const auto regs = thrd::setupRegisters(CODE_START, STACK_START+PAGE_SIZE, arg, USER_CS, USER_DS);
+  const auto regs = thrd::setupRegisters(function, STACK_START+PAGE_SIZE, arg, USER_CS, USER_DS);
   thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
-  auto code_page = pmm::allocZeroPFN();
+  //auto code_page = pmm::allocZeroPFN();
   auto stack_page = pmm::allocZeroPFN();
-  auto code = vmm::pageAddress<void *>(code_page);
-  memcpy(code, &test_code_start, ((uint64_t)&test_code_end-(uint64_t)&test_code_start));
-  thread->address_space_->mapPFN(CODE_START/PAGE_SIZE, code_page, 0, 0);
+  //auto code = vmm::pageAddress<void *>(code_page);
+  //memcpy(code, &test_code_start, ((uint64_t)&test_code_end-(uint64_t)&test_code_start));
+  //thread->address_space_->mapPFN(CODE_START/PAGE_SIZE, code_page, 0, 0);
   thread->address_space_->mapPFN(STACK_START/PAGE_SIZE, stack_page, 1, 0);
+  thread->pid_ = ++pid_cnt;
+  thread->loader_ = loader;
 
   return thread;
 }

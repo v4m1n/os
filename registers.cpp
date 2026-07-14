@@ -47,8 +47,7 @@ uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const r
   for (size_t i = 0; i < 6; ++i)
     stack = push(stack, 0);
   //thread->arch_.cr3 = vmm::AddressSpace::kernel_page_table_;
-  thread.address_space_ = reinterpret_cast<vmm::AddressSpace *>(kmm::kmalloc(sizeof(vmm::AddressSpace)));
-  new (thread.address_space_) vmm::AddressSpace;
+  thread.address_space_ = new vmm::AddressSpace;
   thread.arch_.cr3 = thread.address_space_->pml4_;
 
   return reinterpret_cast<uint64_t>(stack);

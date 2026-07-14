@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstddef>
+#include <algorithm>
 
 module string;
 
@@ -10,6 +11,23 @@ void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *s = (uint8_t *)src;
   while(n--) *d++ = *s++;
   return dest;
+}
+
+bool memzero(const void *s, size_t n) {
+  const char *c = (const char *)s;
+  for (size_t i = 0; i < n; ++i) {
+    if (c[i] != 0) return false;
+  }
+  return true;
+}
+
+void *memchr(const void *s, int c, size_t n) {
+  const unsigned char *p = (const unsigned char *)s;
+  while (n--) {
+    if (*p == (unsigned char)c) return (void *)p;
+    p++;
+  }
+  return nullptr;
 }
 
 void *memset(void *s, int c, size_t n) {

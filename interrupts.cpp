@@ -92,7 +92,16 @@ void exception_handler_13(thrd::registers *regs, uint64_t error) {
 extern "C"
 void exception_handler_14(thrd::registers *regs, uint64_t error) {
   thrd::registerDump(*regs);
-  dbg::panic("pf {}\n", error);
+  size_t cr2;
+  asm ("mov %0, %%cr2":"=r"(cr2));
+  auto thrd = sched::getCurrentThread();
+  dbg::panic_assert(!!thrd->loader_, "pf {} {}\n", error, cr2);
+
+  irq::enableInterrupts();
+
+  thrd->loader_->handlePagefault(cr2, error&1, error&0b10, error&0b10000);
+
+  irq::disableInterrupts();
 }
 
 extern "C"

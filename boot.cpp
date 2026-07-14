@@ -20,6 +20,8 @@ import registers;
 import interrupts;
 import pci;
 import multiboot;
+import loader;
+import utility;
 
 [[maybe_unused]] const volatile struct __attribute__((packed))
 {
@@ -114,55 +116,15 @@ extern "C"
   irq::initAPIC();
   irq::parseRSDT();
   pci::deviceDetection();
+  irq::launchCores();
+
+  pml4[0] = 0;
+  pdpt[0] = 0;
 
   for (uint32_t i = 0; i < block::getDeviceCount(); ++i) {
     block::detectAndMountPartitions(block::getDevice(i));
   }
 
-  {
-    vfs::VfsNode *node = vfs::open("/boot/grub/grub.cfg");
-    if (node) {
-      dbg::printf("Opened /boot/grub/grub.cfg successfully! Size: {} bytes\n", (uint64_t)node->getSize());
-      char *buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
-      if (buf) {
-        int64_t read_bytes = node->read(0, node->getSize(), buf);
-        if (read_bytes > 0) {
-          buf[read_bytes] = '\0';
-          dbg::printf("--- grub.cfg Content ---\n{}\n-----------------------\n", buf);
-        }
-        kmm::kfree(buf);
-      }
-
-      // Test write support
-      const char *test_str = "\n# Hello from the FAT32 Write Driver!\n";
-      uint32_t write_len = strlen(test_str);
-      uint64_t original_size = node->getSize();
-      int64_t written = node->write(original_size, write_len, test_str);
-      if (written == (int64_t)write_len) {
-        dbg::printf("Successfully wrote to /boot/grub/grub.cfg! New size: {} bytes\n", (uint64_t)node->getSize());
-        
-        // Read back to verify
-        char *new_buf = reinterpret_cast<char *>(kmm::kmalloc(node->getSize() + 1));
-        if (new_buf) {
-          int64_t read_back = node->read(0, node->getSize(), new_buf);
-          if (read_back > 0) {
-            new_buf[read_back] = '\0';
-            dbg::printf("--- Verification of New Content ---\n{}\n-----------------------\n", new_buf);
-          }
-          kmm::kfree(new_buf);
-        }
-      } else {
-        dbg::printf("Failed to write to file: returned {}\n", (int64_t)written);
-      }
-
-      delete node;
-    } else {
-      dbg::printf("Failed to open /boot/grub/grub.cfg\n");
-    }
-  }
-  irq::launchCores();
-  pml4[0] = 0;
-  pdpt[0] = 0;
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 2));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 3));
@@ -171,8 +133,15 @@ extern "C"
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 6));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 7));
   //sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 8));
-  sched::addThread(sched::createUserThread(0, 8));
-  sched::addThread(sched::createUserThread(1, 0xdead));
+
+  {
+    util::shared_ptr loader(new Loader());
+    dbg::panic_assert(loader->init("/bin/init"), "init setup failed");
+    sched::addThread(sched::createUserThread(loader->entry_, 0, loader));
+
+  }
+  //sched::addThread(sched::createUserThread(1, 0xdead));
+  dbg::printf("starting scheduler...\n");
 
   sched::launch();
 

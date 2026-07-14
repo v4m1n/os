@@ -30,7 +30,7 @@ FILE(GLOB SSource CONFIGURE_DEPENDS *.S)
 #set_source_files_properties(${SSource} PROPERTIES LANGUAGE ASM_NASM)
 option(ENABLE_ANALYZER "Enable GCC static analyzer (-fanalyzer)" ON)
 
-set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -O0 -gdwarf-2 -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -static")
+set(CMAKE_KERNEL_FLAGS "-m64 -masm=intel -O0 -gdwarf-2 -Wall -Wextra -Werror -Wno-nonnull-compare -nostdinc -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-exceptions -fno-stack-protector -ffreestanding -mcmodel=kernel -mno-red-zone -mgeneral-regs-only -mno-mmx -mno-sse2 -mno-sse3 -mno-3dnow -fcf-protection=none -fno-pic -static -fcheck-new")
 
 if(ENABLE_ANALYZER)
   set(CMAKE_KERNEL_FLAGS "${CMAKE_KERNEL_FLAGS} -fanalyzer")

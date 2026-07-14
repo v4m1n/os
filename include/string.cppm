@@ -12,4 +12,5 @@ export int strcmp(const char *s1, const char *s2);
 export int strncmp(const char *s1, const char *s2, size_t n);
 export char *strncpy(char *dest, const char *src, size_t n);
 export size_t strlen(const char *s);
+export bool memzero(const void *s, size_t n);
 }
