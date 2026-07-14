@@ -53,6 +53,28 @@ fail:
   delete file_;
   return false;
 }
+void Loader::loadBinary(size_t addr) {
+  size_t vpn = addr/PAGE_SIZE;
+  size_t pfn = pmm::allocZeroPFN();
+  auto page = pageAddress<char *>(pfn);
+  bool writeable = false;
+  bool executable = false;
+  bool found = false;
+
+  for (auto segment : phdrs_) {
+    if (segment.p_type != PT_LOAD || !(segment.p_type & PF_R)) continue;
+    if (!(segment.p_vaddr/PAGE_SIZE <= vpn && vpn <= segment.p_vaddr+p_filesz/PAGE_SIZE)) continue;
+    
+
+    found = true;
+  }
+  if (found) {
+    auto thrd = sched::getCurrentThread();
+    thrd->
+
+  }
+}
+
 void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute) {
   auto thrd = sched::getCurrentThread();
   dbg::printf("pagefualt @ {} by {}, p {}, w {}, e {}\n", addr, thrd, present, write, execute);
