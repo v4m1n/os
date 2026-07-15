@@ -9,10 +9,10 @@ extern "C" void print(const char* str) {
     len++;
   }
   asm volatile(
-    "int $0x80"
+    "mov $1, %%rax; int $0x80"
     :
-    : "a"((uint64_t)1), "S"((uint64_t)str), "c"((uint64_t)len)
-    : "memory"
+    : "S"((uint64_t)str), "c"((uint64_t)len)
+    : "rax"
   );
 }
 

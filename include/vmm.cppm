@@ -4,6 +4,7 @@ module;
 
 export module vmm;
 import pmm;
+import vfs;
 
 extern "C" {
 export extern uint64_t pml4[512];
@@ -15,6 +16,7 @@ export namespace vmm {
 
 class AddressSpace {
   public:
+
     constexpr static size_t PRESENT = (1ULL<<0);
     constexpr static size_t WRITEABLE = (1ULL<<1);
     constexpr static size_t USER_ACCESS = (1ULL<<2);
@@ -28,6 +30,7 @@ class AddressSpace {
     constexpr static uint64_t IDENTITY_MAPPING = 0xffff'8000'0000'0000ULL;
     constexpr static uint64_t UC_IDENTITY_MAPPING = 0xffff'a000'0000'0000ULL;
     constexpr static uint64_t IO_MAPPING = 0xffff'c000'0000'0000ULL;
+    constexpr static uint64_t USER_END = 0x0000'8000'0000'0000ULL;
 
     static void initIdentityMapping();
     static void initUCIdentityMapping();

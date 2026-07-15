@@ -127,16 +127,15 @@ test_code_end:
   memset(thread, 0, sizeof(Thread));
 
   //constexpr uint64_t CODE_START = 0x8000000ULL;
-  constexpr uint64_t STACK_START = (1ULL<<47)-PAGE_SIZE;
+  constexpr uint64_t STACK_START = (1ULL<<47)-PAGE_SIZE*1024;
 
   const auto regs = thrd::setupRegisters(function, STACK_START+PAGE_SIZE, arg, USER_CS, USER_DS);
   thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
   //auto code_page = pmm::allocZeroPFN();
-  auto stack_page = pmm::allocZeroPFN();
   //auto code = vmm::pageAddress<void *>(code_page);
   //memcpy(code, &test_code_start, ((uint64_t)&test_code_end-(uint64_t)&test_code_start));
   //thread->address_space_->mapPFN(CODE_START/PAGE_SIZE, code_page, 0, 0);
-  thread->address_space_->mapPFN(STACK_START/PAGE_SIZE, stack_page, 1, 0);
+  //thread->address_space_->mapPFN(STACK_START/PAGE_SIZE, stack_page, 1, 0);
   thread->pid_ = ++pid_cnt;
   thread->loader_ = loader;
 

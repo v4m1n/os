@@ -12,6 +12,12 @@ namespace syscall {
     dbg::printf("syscall {} with parameters {} {} {} {} {} {}\n", snum, arg1, arg2, arg3, arg4, arg5, arg6);
     
     switch (snum) {
+      case 0:
+        {
+          dbg::printf("exit called\n");
+          while(1);
+        }
+        break;
       case 1:
         {
           dbg::printf("[USER] ");
