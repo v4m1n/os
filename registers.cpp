@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 
 module registers;
 import cpu;
@@ -37,7 +38,13 @@ registers setupRegisters(const uint64_t start, const uint64_t stack, const uint6
   return regs;
 }
 
-uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs) {
+void switchToKernelAddressSpace() {
+  auto cur = getCPUStorage<CPU>(0)->current_thread_;
+  std::atomic_ref cr3(cur->arch_.cr3);
+  cr3 = vmm::AddressSpace::kernel_page_table_;
+}
+
+uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs, const bool kernel) {
 
   uint8_t *st = reinterpret_cast<uint8_t *>(stack);
   st += (size - sizeof(registers));
@@ -46,9 +53,12 @@ uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const r
   stack = push(stack, (uint64_t)context_return);
   for (size_t i = 0; i < 6; ++i)
     stack = push(stack, 0);
-  //thread->arch_.cr3 = vmm::AddressSpace::kernel_page_table_;
-  thread.address_space_ = new vmm::AddressSpace;
-  thread.arch_.cr3 = thread.address_space_->pml4_;
+  if (kernel)
+    thread.arch_.cr3 = vmm::AddressSpace::kernel_page_table_;
+  else {
+    thread.address_space_ = new vmm::AddressSpace;
+    thread.arch_.cr3 = thread.address_space_->pml4_;
+  }
 
   return reinterpret_cast<uint64_t>(stack);
 }

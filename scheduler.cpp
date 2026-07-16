@@ -75,52 +75,45 @@ Thread *popThread() {
   return thread;
 }
 
-void launch() {
-  addThread(createKernelThread(reinterpret_cast<size_t>(idle), 0));
-
-  uint64_t tmp;
-  auto cpu = getCPUStorage<CPU>(0);
-  cpu->current_thread_ = getCPUStorage<CPU>(0)->list_;
-  context_switch(&cpu->current_thread_->current_stack_, &tmp);
-  dbg::panic("end of scheduler launch function reached\n");
-}
 
 [[nodiscard]] Thread *createKernelThread(size_t function, size_t arg) {
   auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
   memset(thread, 0, sizeof(Thread));
   const auto regs = thrd::setupRegisters(function, reinterpret_cast<size_t>(thread->stack_)+sizeof(thread->stack_), arg);
-  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
+  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs, true);
   thread->pid_ = ++pid_cnt;
   return thread;
 }
 
-extern "C" uint8_t test_code_start;
-extern "C" uint8_t test_code_end;
+[[noreturn]] void suicide(uint64_t exit_code) {
+  (void)exit_code;
+  irq::disableInterrupts();
+  auto cpu = getCPUStorage<CPU>(0);
+  auto cur = cpu->current_thread_;
 
-asm(R"(
-.global test_code_start
-.global test_code_end
-test_code_start:
-mov %rax, %rdi
-mov %rbx, 1
-int 0x80
-mov %rcx, 0xdeadbeef
-int 0x80
-mov %rdx, 0x0a414141414141
-int 0x80
+  cur->loader_ = nullptr;
+  thrd::switchToKernelAddressSpace();
+  cur->address_space_ = nullptr;
 
-push %rdx
-mov %rax, 1
-mov %rdi, 0
-mov %rsi, %rsp
-mov %rcx, 8
-int 0x80
+  cpu->list_lock_.lock(); // remove thread from the list
+  cur->next_->prev_ = cur->prev_;
+  cur->prev_->next_ = cur->next_;
+  cpu->list_ = cur->prev_;
+  cpu->list_lock_.unlock();
 
-1: jmp 1b
+  cpu->cleanup_lock_.lock(); // add for cleanup
+  cur ->next_ = cpu->cleanup_list_;
+  cpu->cleanup_list_ = cur;
+  cpu->cleanup_lock_.unlock();
 
 
-test_code_end:
-)");
+  schedule(); // de-schedule
+
+
+  dbg::panic("thread survived suicide\n");
+
+}
+
 
 [[nodiscard]] Thread *createUserThread(size_t function, size_t arg, util::shared_ptr<Loader> &loader) {
   auto thread = reinterpret_cast<Thread *>(kmm::kmalloc(sizeof(Thread)));
@@ -130,7 +123,7 @@ test_code_end:
   constexpr uint64_t STACK_START = (1ULL<<47)-PAGE_SIZE*1024;
 
   const auto regs = thrd::setupRegisters(function, STACK_START+PAGE_SIZE, arg, USER_CS, USER_DS);
-  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs);
+  thread->current_stack_ = thrd::setupTask(*thread, thread->stack_, sizeof(thread->stack_), regs, false);
   //auto code_page = pmm::allocZeroPFN();
   //auto code = vmm::pageAddress<void *>(code_page);
   //memcpy(code, &test_code_start, ((uint64_t)&test_code_end-(uint64_t)&test_code_start));
@@ -143,20 +136,30 @@ test_code_end:
 }
 
 void cleanupTask() {
+  auto cpu = getCPUStorage<CPU>(0);
   while(1) {
-    if (!getCPUStorage<CPU>(0)->cleanup_list_) {
+    if (!cpu->cleanup_list_) {
       schedule();
       continue;
     }
-    irq::disableInterrupts();
-    Thread *cleanup_list_ = getCPUStorage<CPU>(0)->cleanup_list_;
+    cpu->cleanup_lock_.lock();
+    Thread *cleanup_list = cpu->cleanup_list_;
     getCPUStorage<CPU>(0)->cleanup_list_ = 0;
-    irq::enableInterrupts();
-    (void) cleanup_list_;
+    cpu->cleanup_lock_.unlock();
 
+    size_t cnt = 0;
+
+    while (cleanup_list) {
+      auto old = cleanup_list;
+      cleanup_list = cleanup_list->next_;
+      delete old;
+      ++cnt;
+    }
+    dbg::printf("cleanup done, deleted {} threads\n", cnt);
   }
 }
-void idle() {
+
+void idleTask() {
   size_t tick = getCPUStorage<CPU>(0)->tick_;
   schedule();
   while(1) {
@@ -169,5 +172,16 @@ void idle() {
       schedule();
     }
   }
+}
+
+void launch() {
+  addThread(createKernelThread(reinterpret_cast<size_t>(idleTask), 0));
+  addThread(createKernelThread(reinterpret_cast<size_t>(cleanupTask), 0));
+
+  uint64_t tmp;
+  auto cpu = getCPUStorage<CPU>(0);
+  cpu->current_thread_ = getCPUStorage<CPU>(0)->list_;
+  context_switch(&cpu->current_thread_->current_stack_, &tmp);
+  dbg::panic("end of scheduler launch function reached\n");
 }
 }

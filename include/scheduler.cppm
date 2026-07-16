@@ -33,6 +33,7 @@ export struct CPU {
   size_t stack_start_;
   size_t tick_ = 0;
   ArchCPU arch_;
+  spinlock_irq cleanup_lock_;
   Thread *cleanup_list_ = nullptr;
   spinlock_irq list_lock_;
   Thread *list_ = nullptr;
@@ -46,9 +47,9 @@ export namespace sched {
 
   void launch();
 
-  void idle();
-
   void addThread(Thread *thread);
+
+  [[noreturn]] void suicide(uint64_t exit_code);
 
   Thread *nextThread();
 

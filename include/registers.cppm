@@ -39,6 +39,7 @@ export namespace thrd {
     uint64_t fs;
   };
   registers setupRegisters(const uint64_t start, const uint64_t stack, const uint64_t arg1, const uint64_t cs=KERNEL_CS, const uint64_t ds=KERNEL_DS);
-  uint64_t setupTask(::Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs);
+  uint64_t setupTask(Thread &thread, uint64_t *stack, const uint64_t size, const registers &regs, const bool kernel);
   void registerDump(const registers &regs);
+  void switchToKernelAddressSpace();
 }

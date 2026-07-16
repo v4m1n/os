@@ -6,6 +6,7 @@ module;
 module syscall;
 
 import debug;
+import scheduler;
 
 namespace syscall {
   uint64_t handler(uint64_t snum, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6) {
@@ -15,7 +16,7 @@ namespace syscall {
       case 0:
         {
           dbg::printf("exit called\n");
-          while(1);
+          sched::suicide(arg1);
         }
         break;
       case 1:
@@ -25,6 +26,12 @@ namespace syscall {
           for (uint64_t i = 0; i < arg3; ++i) {
             dbg::putchar(out[i]);
           }
+        }
+        break;
+      case 2:
+        {
+          dbg::printf("yield\n");
+          sched::schedule();
         }
         break;
       default:
