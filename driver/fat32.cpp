@@ -6,9 +6,30 @@ import knew;
 import string;
 import kmm;
 import debug;
-
+import sync;
 
 namespace fat32 {
+
+static void toFATName(const char *name, char *fat_name) {
+  memset(fat_name, ' ', 11);
+  int i = 0, j = 0;
+  while (name[i] != '.' && name[i] != '\0' && j < 8) {
+    char c = name[i];
+    if (c >= 'a' && c <= 'z') c = c - 'a' + 'A';
+    fat_name[j++] = c;
+    i++;
+  }
+  if (name[i] == '.') {
+    i++;
+    j = 8;
+    while (name[i] != '\0' && j < 11) {
+      char c = name[i];
+      if (c >= 'a' && c <= 'z') c = c - 'a' + 'A';
+      fat_name[j++] = c;
+      i++;
+    }
+  }
+}
 
 static void parseFATName(const char *fat_name, char *out_name) {
   int name_len = 8;
@@ -44,6 +65,7 @@ FAT32Node::FAT32Node(FAT32FileSystem *fs, FATDirEntry entry, uint32_t cluster, c
 }
 
 int64_t FAT32Node::read(uint64_t offset, uint32_t size, void *buffer) {
+  lock_guard<mutex> guard(fs_->getMutex());
   uint64_t file_size = getSize();
   if (offset >= file_size) return 0;
   if (offset + size > file_size) {
@@ -117,6 +139,7 @@ void FAT32Node::updateDirectoryEntry() {
 }
 
 int64_t FAT32Node::write(uint64_t offset, uint32_t size, const void *buffer) {
+  lock_guard<mutex> guard(fs_->getMutex());
   uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
   uint64_t needed_end = offset + size;
   uint64_t current_allocated_bytes = 0;
@@ -218,6 +241,7 @@ int64_t FAT32Node::write(uint64_t offset, uint32_t size, const void *buffer) {
 }
 
 int FAT32Node::readdir(uint32_t index, vfs::DirectoryEntry &entry) {
+  lock_guard<mutex> guard(fs_->getMutex());
   if (getType() != vfs::NodeType::DIRECTORY) return -1;
 
   uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
@@ -272,6 +296,7 @@ int FAT32Node::readdir(uint32_t index, vfs::DirectoryEntry &entry) {
 }
 
 vfs::VfsNode *FAT32Node::finddir(const char *name) {
+  lock_guard<mutex> guard(fs_->getMutex());
   if (getType() != vfs::NodeType::DIRECTORY) return nullptr;
 
   uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
@@ -331,6 +356,182 @@ vfs::VfsNode *FAT32Node::finddir(const char *name) {
 
   kmm::kfree(cluster_buf);
   return nullptr;
+}
+
+vfs::VfsNode *FAT32Node::create(const char *name, vfs::NodeType type) {
+  lock_guard<mutex> guard(fs_->getMutex());
+  if (getType() != vfs::NodeType::DIRECTORY) return nullptr;
+
+  uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
+  uint32_t curr_cluster = first_cluster_;
+
+  char *cluster_buf = reinterpret_cast<char *>(kmm::kmalloc(cluster_size));
+  if (!cluster_buf) return nullptr;
+
+  char fat_name[11];
+  toFATName(name, fat_name);
+
+  uint32_t free_cluster = 0;
+  uint32_t free_offset = 0;
+  bool found_free = false;
+
+  while (curr_cluster < 0x0FFFFFF8 && curr_cluster != 0) {
+    if (fs_->readCluster(curr_cluster, cluster_buf) != 0) {
+      kmm::kfree(cluster_buf);
+      return nullptr;
+    }
+
+    for (uint32_t offset = 0; offset < cluster_size; offset += sizeof(FATDirEntry)) {
+      auto *fat_entry = reinterpret_cast<FATDirEntry *>(cluster_buf + offset);
+      if (fat_entry->name[0] == 0x00 || static_cast<uint8_t>(fat_entry->name[0]) == 0xE5) {
+        free_cluster = curr_cluster;
+        free_offset = offset;
+        found_free = true;
+        break;
+      }
+    }
+    if (found_free) break;
+    uint32_t next = fs_->getNextCluster(curr_cluster);
+    if (next >= 0x0FFFFFF8 || next == 0) {
+      uint32_t new_cluster = fs_->allocateCluster();
+      if (!new_cluster) {
+        kmm::kfree(cluster_buf);
+        return nullptr;
+      }
+      fs_->setNextCluster(curr_cluster, new_cluster);
+      memset(cluster_buf, 0, cluster_size);
+      fs_->writeCluster(new_cluster, cluster_buf);
+      free_cluster = new_cluster;
+      free_offset = 0;
+      found_free = true;
+      break;
+    }
+    curr_cluster = next;
+  }
+
+  if (!found_free) {
+    kmm::kfree(cluster_buf);
+    return nullptr;
+  }
+
+  if (free_cluster != curr_cluster) {
+    if (fs_->readCluster(free_cluster, cluster_buf) != 0) {
+      kmm::kfree(cluster_buf);
+      return nullptr;
+    }
+  }
+
+  auto *new_entry = reinterpret_cast<FATDirEntry *>(cluster_buf + free_offset);
+  memset(new_entry, 0, sizeof(FATDirEntry));
+  memcpy(new_entry->name, fat_name, 11);
+  new_entry->attr = (type == vfs::NodeType::DIRECTORY) ? 0x10 : 0x20; 
+  
+  uint32_t new_file_cluster = 0;
+  if (type == vfs::NodeType::DIRECTORY) {
+    new_file_cluster = fs_->allocateCluster();
+    if (new_file_cluster) {
+      new_entry->fst_clus_hi = (new_file_cluster >> 16) & 0xFFFF;
+      new_entry->fst_clus_lo = new_file_cluster & 0xFFFF;
+      
+      char *zero_buf = reinterpret_cast<char *>(kmm::kmalloc(cluster_size));
+      memset(zero_buf, 0, cluster_size);
+      
+      auto *dot = reinterpret_cast<FATDirEntry *>(zero_buf);
+      memset(dot, 0, sizeof(FATDirEntry));
+      memset(dot->name, ' ', 11);
+      dot->name[0] = '.';
+      dot->attr = 0x10;
+      dot->fst_clus_hi = new_entry->fst_clus_hi;
+      dot->fst_clus_lo = new_entry->fst_clus_lo;
+
+      auto *dotdot = reinterpret_cast<FATDirEntry *>(zero_buf + sizeof(FATDirEntry));
+      memset(dotdot, 0, sizeof(FATDirEntry));
+      memset(dotdot->name, ' ', 11);
+      dotdot->name[0] = '.'; dotdot->name[1] = '.';
+      dotdot->attr = 0x10;
+      dotdot->fst_clus_hi = (first_cluster_ >> 16) & 0xFFFF;
+      dotdot->fst_clus_lo = first_cluster_ & 0xFFFF;
+
+      fs_->writeCluster(new_file_cluster, zero_buf);
+      kmm::kfree(zero_buf);
+    }
+  }
+  
+  if (fs_->writeCluster(free_cluster, cluster_buf) != 0) {
+    kmm::kfree(cluster_buf);
+    return nullptr;
+  }
+
+  uint64_t entry_sector = fs_->getFirstDataSector() + (free_cluster - 2) * fs_->getSectorsPerCluster() + (free_offset / fs_->getBytesPerSector());
+  uint32_t entry_offset = free_offset % fs_->getBytesPerSector();
+
+  void *mem = kmm::kmalloc(sizeof(FAT32Node));
+  if (!mem) {
+    kmm::kfree(cluster_buf);
+    return nullptr;
+  }
+
+  auto *node = new (mem) FAT32Node(fs_, *new_entry, new_file_cluster, name, entry_sector, entry_offset);
+  kmm::kfree(cluster_buf);
+  return node;
+}
+
+int FAT32Node::unlink(const char *name) {
+  lock_guard<mutex> guard(fs_->getMutex());
+  if (getType() != vfs::NodeType::DIRECTORY) return -1;
+
+  uint32_t cluster_size = fs_->getSectorsPerCluster() * fs_->getBytesPerSector();
+  uint32_t curr_cluster = first_cluster_;
+
+  char *cluster_buf = reinterpret_cast<char *>(kmm::kmalloc(cluster_size));
+  if (!cluster_buf) return -1;
+
+  bool found = false;
+
+  while (curr_cluster < 0x0FFFFFF8 && curr_cluster != 0) {
+    if (fs_->readCluster(curr_cluster, cluster_buf) != 0) {
+      kmm::kfree(cluster_buf);
+      return -1;
+    }
+
+    for (uint32_t offset = 0; offset < cluster_size; offset += sizeof(FATDirEntry)) {
+      auto *fat_entry = reinterpret_cast<FATDirEntry *>(cluster_buf + offset);
+      if (fat_entry->name[0] == 0x00) {
+        found = true;
+        break; // Reached end of directory, not found
+      }
+      if (static_cast<uint8_t>(fat_entry->name[0]) == 0xE5) continue;
+      
+      char parsed_name[256];
+      parseFATName(fat_entry->name, parsed_name);
+
+      if (strcmp(parsed_name, name) == 0) {
+        uint32_t entry_cluster = (static_cast<uint32_t>(fat_entry->fst_clus_hi) << 16) | fat_entry->fst_clus_lo;
+        if (entry_cluster != 0) {
+          uint32_t c = entry_cluster;
+          while (c < 0x0FFFFFF8 && c != 0) {
+            uint32_t next = fs_->getNextCluster(c);
+            fs_->setNextCluster(c, 0); 
+            c = next;
+          }
+        }
+
+        fat_entry->name[0] = 0xE5;
+        if (fs_->writeCluster(curr_cluster, cluster_buf) != 0) {
+          kmm::kfree(cluster_buf);
+          return -1;
+        }
+        
+        kmm::kfree(cluster_buf);
+        return 0;
+      }
+    }
+    if (found) break; // if found = true from reaching 0x00
+    curr_cluster = fs_->getNextCluster(curr_cluster);
+  }
+
+  kmm::kfree(cluster_buf);
+  return -1;
 }
 
 uint64_t FAT32Node::getSize() const {

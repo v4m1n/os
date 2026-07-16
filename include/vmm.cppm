@@ -5,6 +5,7 @@ module;
 export module vmm;
 import pmm;
 import vfs;
+import sync;
 
 extern "C" {
 export extern uint64_t pml4[512];
@@ -50,6 +51,9 @@ class AddressSpace {
     }
 
     static uint64_t kernel_page_table_;
+    static mutex kernel_address_space_lock_;
+
+    mutex address_space_lock_;
 
     AddressSpace();
     ~AddressSpace();

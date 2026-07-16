@@ -53,24 +53,24 @@ bool Loader::init(const char *path) {
     if (hdr.p_type != PT_LOAD) return;
     if ((hdr.p_vaddr&(PAGE_SIZE-1)) != (hdr.p_offset&(PAGE_SIZE-1))) return;
       auto off = hdr.p_vaddr&(PAGE_SIZE-1);
-      auto region = new VirtMemRegion{
+      auto region = util::shared_ptr<VirtMemRegion>(new VirtMemRegion{
         .start_ = hdr.p_vaddr-off,
         .size_ = ((hdr.p_memsz-1)&~(PAGE_SIZE-1)) + PAGE_SIZE, //round up to multiple page size
         .file_offset_ = hdr.p_offset-off,
         .file_size_ = hdr.p_filesz+off,
-        .file_ = vfs::open(path),
+        .file_ = util::shared_ptr(vfs::open(path)),
         .read_ = static_cast<bool>(hdr.p_flags&PF_R),
         .write_ = static_cast<bool>(hdr.p_flags&PF_W),
         .exec_ = static_cast<bool>(hdr.p_flags&PF_X),
         .next_ = nullptr
 
-    };
+    });
     insertRegion(region);
 
 
   });
 
-  insertRegion(new VirtMemRegion{
+  insertRegion(util::shared_ptr(new VirtMemRegion{
     .start_ = vmm::AddressSpace::USER_END-PAGE_SIZE*1024,
     .size_ = PAGE_SIZE*1024,
     .file_offset_ = 0,
@@ -80,7 +80,7 @@ bool Loader::init(const char *path) {
     .write_ = true,
     .exec_ = false,
     .next_ = nullptr
-  });
+  }));
 
 
 
@@ -131,10 +131,8 @@ void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute
 
 Loader::~Loader() {
   while (mappings_) {
-    auto tmp = mappings_;
+    util::shared_ptr<VirtMemRegion> tmp = mappings_;
     mappings_ = tmp->next_;
-    delete tmp->file_;
-    delete tmp;
   }
 }
 void Loader::dumpRegions() {
@@ -146,9 +144,12 @@ void Loader::dumpRegions() {
     tmp = tmp->next_;
   }
 }
-bool Loader::insertRegion(VirtMemRegion *n) {
+bool Loader::insertRegion(util::shared_ptr<VirtMemRegion> n) {
   if ((n->start_ & (PAGE_SIZE-1)) || (n->size_ & (PAGE_SIZE-1)) || !n->size_) return false;
-  VirtMemRegion **cur = &mappings_;
+ 
+  lock_guard guard(region_lock_);
+
+  util::shared_ptr<VirtMemRegion> *cur = &mappings_;
   for (;(*cur) && (*cur)->start_ > n->start_; cur = &(*cur)->next_);
 
   if (!*cur) goto done;
@@ -164,8 +165,9 @@ bool Loader::insertRegion(VirtMemRegion *n) {
   *cur = n;
   return true;
 }
-Loader::VirtMemRegion *Loader::findRegion(uint64_t addr) {
-  VirtMemRegion *cur = mappings_;
+util::shared_ptr<Loader::VirtMemRegion> Loader::findRegion(uint64_t addr) {
+  lock_guard guard(region_lock_);
+  auto cur = mappings_;
   for(; cur; cur = cur->next_) {
     if (cur->start_ <= addr && cur->start_ + cur->size_ > addr) break;
     if (cur->start_ < addr) return nullptr;

@@ -7,6 +7,7 @@ import cpu;
 import string;
 import pmm;
 import debug;
+import sync;
 
 extern "C" {
 [[gnu::section(".data"), gnu::aligned(PAGE_SIZE)]] uint64_t pml4[512];
@@ -21,6 +22,7 @@ extern "C" size_t LS_Virt;
 
 namespace vmm {
 uint64_t AddressSpace::kernel_page_table_;
+mutex AddressSpace::kernel_address_space_lock_;
 
 AddressSpace::AddressSpace() {
   pml4_ = pmm::allocZeroPFN()*PAGE_SIZE;
@@ -58,6 +60,7 @@ AddressSpace::~AddressSpace() {
 
 
 bool AddressSpace::mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx) {
+  lock_guard guard(address_space_lock_);
   const Offsets off{vpn};
   size_t *pdpt;
   size_t *pd;
@@ -95,6 +98,9 @@ bool AddressSpace::mapPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t
 }
 
 uint64_t AddressSpace::unmapPFN(const uint64_t vpn) {
+ 
+  lock_guard guard(address_space_lock_);
+
   const Offsets off{vpn};
   size_t *pdpt;
   size_t *pd;
@@ -134,6 +140,7 @@ uint64_t AddressSpace::unmapPFN(const uint64_t vpn) {
 }
 
 bool AddressSpace::mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const uint64_t writeable, const uint64_t nx) {
+  lock_guard guard(kernel_address_space_lock_);
   const Offsets off{vpn};
   size_t *pdpt;
   size_t *pd;
@@ -170,6 +177,7 @@ bool AddressSpace::mapKernelPFN(const uint64_t vpn, const uint64_t pfn, const ui
 }
 
 void AddressSpace::setKernelCaching(const size_t vpn, const uint64_t cache) {
+  lock_guard guard(kernel_address_space_lock_);
   const Offsets off{vpn};
   size_t *pdpt;
   size_t *pd;
@@ -279,6 +287,7 @@ void AddressSpace::initIdentityMapping() {
   }
 }
 void *AddressSpace::ioremap(const uint64_t pfn, const bool huge_page) {
+  lock_guard guard(kernel_address_space_lock_);
   constexpr size_t start = IO_MAPPING/PAGE_SIZE;
   constexpr Offsets start_off{start};
   static_assert(!start_off.pti && !start_off.pdi && !start_off.pdpti);

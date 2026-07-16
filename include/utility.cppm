@@ -43,12 +43,12 @@ public:
   }
   constexpr shared_ptr(std::nullptr_t) noexcept : cnt_(nullptr), ptr_(nullptr) {
   }
-  explicit shared_ptr(T *p) : cnt_(new std::atomic<uint64_t>(1)), ptr_(p) {
+  shared_ptr(T *p) : cnt_(new std::atomic<uint64_t>(1)), ptr_(p) {
   }
-  explicit shared_ptr(const shared_ptr<T> &p) noexcept : cnt_(p.cnt_), ptr_(p.ptr_) {
+  shared_ptr(const shared_ptr<T> &p) noexcept : cnt_(p.cnt_), ptr_(p.ptr_) {
     if (p.cnt_) ++(*p.cnt_);
   }
-  explicit shared_ptr(shared_ptr<T> &&p) noexcept : cnt_(p.cnt_), ptr_(p.ptr_) {
+  shared_ptr(shared_ptr<T> &&p) noexcept : cnt_(p.cnt_), ptr_(p.ptr_) {
     p.cnt_ = nullptr;
     p.ptr_ = nullptr;
   }
