@@ -4,6 +4,7 @@ module;
 export module fat32;
 import vfs;
 import block;
+import sync;
 
 export namespace fat32 {
 
@@ -64,6 +65,8 @@ public:
   int64_t write(uint64_t offset, uint32_t size, const void *buffer) override;
   int readdir(uint32_t index, vfs::DirectoryEntry &entry) override;
   vfs::VfsNode *finddir(const char *name) override;
+  vfs::VfsNode *create(const char *name, vfs::NodeType type) override;
+  int unlink(const char *name) override;
   uint64_t getSize() const override;
   vfs::NodeType getType() const override;
 
@@ -97,7 +100,10 @@ public:
   uint32_t getBytesPerSector() const { return bpb_.bytes_per_sector; }
   uint64_t getFirstDataSector() const { return first_data_sector_; }
 
+  mutex &getMutex() { return fs_mutex_; }
+
 private:
+  mutex fs_mutex_;
   BlockDevice *dev_;
   uint64_t partition_start_lba_;
   BPB bpb_;
