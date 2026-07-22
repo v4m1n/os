@@ -6,6 +6,7 @@ export module vmm;
 import pmm;
 import vfs;
 import sync;
+import registers;
 
 extern "C" {
 export extern uint64_t pml4[512];
@@ -14,6 +15,10 @@ export extern uint64_t pd[512];
 }
 
 export namespace vmm {
+bool isInUserCopy(thrd::registers *regs);
+bool copyFromUser(void *dest, void *src, size_t len);
+bool copyToUser(void *dest, void *src, size_t len);
+void gotoCopyFail(thrd::registers *regs);
 
 class AddressSpace {
   public:

@@ -4,6 +4,7 @@
 
 
 int main() {
-  printf("Hello from init! %d\n", 1234);
+  print("Hello from init!\n");
+  print("H");
   return 0;
 }

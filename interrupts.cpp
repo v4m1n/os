@@ -99,7 +99,7 @@ void exception_handler_14(thrd::registers *regs, uint64_t error) {
 
   irq::enableInterrupts();
 
-  thrd->loader_->handlePagefault(cr2, error&1, error&0b10, error&0b10000);
+  thrd->loader_->handlePagefault(cr2, error&1, error&0b10, error&0b10000, error&0b100, regs);
 
   irq::disableInterrupts();
 }

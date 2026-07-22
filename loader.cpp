@@ -10,6 +10,7 @@ import vfs;
 import string;
 import array;
 import scheduler;
+import registers;
 import vmm;
 import pmm;
 
@@ -96,6 +97,9 @@ fail:
   return false;
 }
 bool Loader::loadMemory(size_t addr) {
+
+  if (addr >= vmm::AddressSpace::USER_END) return false;
+
   auto reg = findRegion(addr);
 
   if (!reg) return false;
@@ -121,12 +125,16 @@ bool Loader::loadMemory(size_t addr) {
   return true;
 }
 
-void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute) {
+void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute, bool user, thrd::registers *regs) {
   dbg::panic_assert(!present, "not implemented");
+  dbg::panic_assert(user || vmm::isInUserCopy(regs), "kernel had a pf {} {}\n", vmm::isInUserCopy(regs), regs->rip);
   auto thrd = sched::getCurrentThread();
   
   dbg::printf("pagefault @ {} by {}, p {}, w {}, e {}\n", addr, thrd, present, write, execute);
-  loadMemory(addr);
+  if (!loadMemory(addr)){
+    if (vmm::isInUserCopy(regs)) vmm::gotoCopyFail(regs);
+    else sched::suicide(-1ULL);
+  }
 }
 
 Loader::~Loader() {

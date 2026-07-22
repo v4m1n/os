@@ -9,6 +9,7 @@ import vfs;
 import sync;
 import array;
 import utility;
+import registers;
 
 export struct Loader {
   vfs::VfsNode *file_ = nullptr;
@@ -43,7 +44,7 @@ export struct Loader {
   
 
   bool init(const char *path);
-  void handlePagefault(size_t addr, bool present, bool write, bool execute);
+  void handlePagefault(size_t addr, bool present, bool write, bool execute, bool user, thrd::registers *regs);
   ~Loader();
   
 };

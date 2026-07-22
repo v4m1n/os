@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 #include <cstddef>
+#include <bit>
 
 module vmm;
 import cpu;
@@ -402,5 +403,51 @@ void AddressSpace::initUCIdentityMapping() {
     }
   }
 }
-};
+
+
+extern "C" void copy_start(void);
+extern "C" void copy_end(void);
+extern "C" void copy_fail(void);
+
+void gotoCopyFail(thrd::registers *regs) {
+  regs->rip = std::bit_cast<uint64_t>(&copy_fail);
+}
+bool isInUserCopy(thrd::registers *regs) {
+  return std::bit_cast<uint64_t>(&copy_start) <= regs->rip && regs->rip < std::bit_cast<uint64_t>(&copy_end);
+}
+
+[[gnu::noinline]] static bool copy(void *dest, void *src, size_t len) {
+  uint64_t ret = 0;
+  asm volatile (R"(
+  .globl copy_fail
+  .globl copy_start
+  .globl copy_end
+  clac
+copy_start:
+  rep movsb
+copy_end:
+  mov %0, 1;
+  jmp 1f;
+copy_fail:
+  mov %0, 0;
+1:
+  stac
+
+  )":"=r"(ret), "+D"(dest), "+S"(src), "+c"(len)::"memory");
+  return ret;
+}
+
+bool copyFromUser(void *dest, void *src, size_t len) {
+  if (std::bit_cast<uint64_t>(src) >= AddressSpace::USER_END) return false;
+  if (std::bit_cast<uint64_t>(src)+len >= AddressSpace::USER_END) return false;
+  if (std::bit_cast<uint64_t>(src)+len < std::bit_cast<uint64_t>(src)) return false;
+  return copy(dest, src, len);
+}
+bool copyToUser(void *dest, void *src, size_t len) {
+  if (std::bit_cast<uint64_t>(dest) >= AddressSpace::USER_END) return false;
+  if (std::bit_cast<uint64_t>(dest)+len >= AddressSpace::USER_END) return false;
+  if (std::bit_cast<uint64_t>(dest)+len < std::bit_cast<uint64_t>(dest)) return false;
+  return copy(dest, src, len);
+}
+}
 
