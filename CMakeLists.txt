@@ -94,8 +94,8 @@ add_custom_command(OUTPUT dsk
 )
 
 add_custom_target(qemu
-  COMMAND qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd -display none
-  COMMENT "launch qemu `qemu-system-x86_64 -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd -display none`"
+  COMMAND qemu-system-x86_64 -cpu max -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd -display none
+  COMMENT "launch qemu `qemu-system-x86_64 -cpu max -m 8G -smp 4 -no-reboot -debugcon stdio -drive format=raw,file=disk.img,id=NVME1,if=none -device nvme,drive=NVME1,serial=nvme1 -bios /usr/share/ovmf/x64/OVMF.4m.fd -display none`"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   USES_TERMINAL
 )
