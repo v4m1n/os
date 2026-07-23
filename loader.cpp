@@ -126,11 +126,12 @@ bool Loader::loadMemory(size_t addr) {
 }
 
 void Loader::handlePagefault(size_t addr, bool present, bool write, bool execute, bool user, thrd::registers *regs) {
+  auto thrd = sched::getCurrentThread();
+  dbg::printf("pagefault @ {} by {}, p {}, w {}, e {}\n", addr, thrd, present, write, execute);
+
   dbg::panic_assert(!present, "not implemented");
   dbg::panic_assert(user || vmm::isInUserCopy(regs), "kernel had a pf {} {}\n", vmm::isInUserCopy(regs), regs->rip);
-  auto thrd = sched::getCurrentThread();
   
-  dbg::printf("pagefault @ {} by {}, p {}, w {}, e {}\n", addr, thrd, present, write, execute);
   if (!loadMemory(addr)){
     if (vmm::isInUserCopy(regs)) vmm::gotoCopyFail(regs);
     else sched::suicide(-1ULL);

@@ -422,7 +422,7 @@ bool isInUserCopy(thrd::registers *regs) {
   .globl copy_fail
   .globl copy_start
   .globl copy_end
-  clac
+  stac
 copy_start:
   rep movsb
 copy_end:
@@ -431,7 +431,7 @@ copy_end:
 copy_fail:
   mov %0, 0;
 1:
-  stac
+  clac
 
   )":"=r"(ret), "+D"(dest), "+S"(src), "+c"(len)::"memory");
   return ret;

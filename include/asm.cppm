@@ -111,7 +111,36 @@ export {
   inline void setCR3(size_t val) {
     asm volatile("mov cr3, %0" :: "r"(val) : "memory");
   }
+  inline uint64_t readCR3() {
+    uint64_t val;
+    asm volatile("mov %0, cr3" :"=r"(val) :: "memory");
+    return val;
+  }
 
+  inline void setCR4(size_t val) {
+    asm volatile("mov cr4, %0" :: "r"(val) : "memory");
+  }
+  inline uint64_t readCR4() {
+    uint64_t val;
+    asm volatile("mov %0, cr4" :"=r"(val) :: "memory");
+    return val;
+  }
+  inline void setCR0(size_t val) {
+    asm volatile("mov cr0, %0" :: "r"(val) : "memory");
+  }
+  inline uint64_t readCR0() {
+    uint64_t val;
+    asm volatile("mov %0, cr0" :"=r"(val) :: "memory");
+    return val;
+  }
+  inline void setCR8(size_t val) {
+    asm volatile("mov cr8, %0" :: "r"(val) : "memory");
+  }
+  inline uint64_t readCR8() {
+    uint64_t val;
+    asm volatile("mov %0, cr8" :"=r"(val) :: "memory");
+    return val;
+  }
   namespace irq {
     inline bool getIF() {
       uint64_t flags;

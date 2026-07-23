@@ -399,6 +399,12 @@ void testfunc(uint64_t) {
 }
 uint64_t cores_up = 0;
 
+void enableExtraFeatures() {
+  auto cr4 = readCR4();
+  cr4 |= (1ULL<<16) | (1ULL<<20) | (1ULL<<21) | (1ULL<<9) | (1ULL<<4); // FSGSBASE SMEP SMAP OSFXSR PSE
+  setCR4(cr4);
+}
+
 extern "C" void core_boot(uint64_t id) {
 
   auto &cpu = cpus.at(id);
@@ -422,10 +428,13 @@ extern "C" void core_boot(uint64_t id) {
   asm volatile("ltr ax"::"a"(TSSS):"memory");
   wrmsr(IA32_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
   wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
+  wrmsr(IA32_KERNEL_GS_BASE_MSR, reinterpret_cast<uint64_t>(&cpu));
 
   initAPIC();
 
   dbg::printf("{d}", id);
+
+  enableExtraFeatures();
 
   atomic_inc(cores_up);
   sched::addThread(sched::createKernelThread(reinterpret_cast<size_t>(testfunc), 1));
@@ -535,6 +544,8 @@ void launchCores() {
   while(atomic_fetch(cores_up) < cpus.size()) cbarrier();
 
   asm volatile("ltr ax"::"a"(TSSS):"memory");
+
+  enableExtraFeatures();
 
   dbg::printf("\nall cores up\n");
 }
